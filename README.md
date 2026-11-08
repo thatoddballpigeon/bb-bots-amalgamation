@@ -1,6 +1,6 @@
 ## Big Brother Bots: A Big Brother (US) Simulator ## 
 
---> https://spaulmark.github.io/bb-bots/ <--
+--> https://thatoddballpigeon.github.io/bb-bots-amalgamation/ <--
 
 Big Brother Bots is a simulator for the reality show Big Brother.
 
@@ -71,4 +71,10 @@ Jurors typically prefer to vote for their friends, so people with a lot of frien
 npm install
 npm start
 ```
-(you might get some issues with node-sass, because i have never in my life not had issues with node-sass. my only advice is just do stuff until it works)
+(you might get some issues with node-sass... in which case you should be using sass anyway, node's outdated)
+
+## A Word from That Oddball Pigeon (heh) ##
+
+This was mainly made because uhhh my friends weren't exactly fans of the other sims and how they handled certain aspects of things. So I'm putting this up, combining the best of all sims while adding a few extra touches of my own.
+
+I plan to re-write most (if not all) of the AI-generated text that I copied over.
