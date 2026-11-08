@@ -1,0 +1,277 @@
+import React from "react";
+import ReactPaginate from "react-paginate";
+import { HasText } from "../layout/text";
+import { shuffle, ceil, debounce } from "lodash";
+import { pushToMainContentStream, selectDeckSubject, selectedDecks$ } from "../../subjects/subjects";
+import { CastingScreen } from "../castingScreen/castingScreen";
+import _ from "lodash";
+import styled from "styled-components";
+import { Subscription } from "rxjs";
+import { selectedColor } from "../playerPortrait/houseguestPortraitController";
+import { PlayerProfile } from "../../model";
+import { Screens } from "../topbar/topBar";
+import { newStatsMap, randomInt } from "../../utils";
+import { ARCHETYPES } from "../playerPortrait/archetypes";
+import { PERSONALITIES } from "../playerPortrait/personalities";
+import { defaultGenderAttraction } from "../../utils/alliances";
+
+interface DeckScreenProps {}
+
+interface DeckScreenState {
+    loading: boolean;
+    decks: string[];
+    i: number;
+    sortedDecks: string[];
+    debouncedSearchText: string;
+    isSorted: boolean;
+    searchText: string;
+    selectedDecks: Set<string>;
+}
+
+const decksPerPage = 26;
+export const baseUrl = "https://raw.githubusercontent.com/spaulmark/img/master/";
+
+const imageCache: { [id: string]: string } = {};
+
+const DeckStyle = styled(HasText)`
+    display: flex;
+    cursor: pointer;
+    align-items: center;
+    :hover {
+        color: red;
+        background-color: #ffe1ea;
+    }
+`;
+
+const Centered = styled.div`
+    display: flex;
+    justify-content: center;
+    align-items: center;
+`;
+
+const DeckText = styled.p`
+    margin-left: 1rem;
+`;
+
+async function randomImageFromFolder(folder: string) {
+    if (imageCache[folder]) return imageCache[folder];
+    const links = await (await fetch(`${baseUrl}${folder}/dir.json`)).json();
+    const image = _.sample(links["files"]);
+    imageCache[folder] = `${baseUrl}${folder}/${image}`;
+    return `${baseUrl}${folder}/${image}`;
+}
+
+async function submitCasts(casts: Set<string>): Promise<void> {
+    if (!casts?.size) return;
+    try {
+        const defaultPersonality = PERSONALITIES[0].name;
+        const defaultArchetype = ARCHETYPES[0].name;
+        const defaultAttraction = defaultGenderAttraction("Female");
+        
+        const castPromises = Array.from(casts, async (cast) => {
+            try {
+                const response = await fetch(`${baseUrl}${cast}/dir.json`);
+                if (!response.ok) {
+                    console.warn(`Skipping cast "${cast}": HTTP status ${response.status}`);
+                    return [];
+                }
+        
+                const links = await response.json();
+                const files: string[] = links.files ?? [];
+
+                const castUrlPrefix = `${baseUrl}${cast}/`;
+
+                return files.map((file: string) => {
+                    const lastDot = file.lastIndexOf(".");
+                    const fullName = lastDot === -1 ? file : file.substring(0, lastDot);
+                    
+                    return {
+                        imageURL: castUrlPrefix + file,
+                        name: [fullName, "", ""],
+                        alias: "",
+                        gender: "Female",
+                        age: randomInt(18, 80),
+                        hometown: "",
+                        occupation: "",
+                        personality: defaultPersonality,
+                        archetype: defaultArchetype,
+                        stats: newStatsMap(),
+                        traits: [0, 0, 0, 0, 0, 0, 0, 0],
+                        disableShowmances: false,
+                        attractedTo: defaultAttraction,
+                        intruder: { isIntruder: false, introWeek: 0 },
+                        secretTwin: { isTwin: false, isPrimaryTwin: false, twinPartner: null, twinEntryEpisode: null },
+                        popularity: { fame: null, popularity: 50, startPopularity: undefined, _popTouched: false },
+                    };
+                });
+            } catch (error) {
+                console.error(`Failed fetching files for cast: ${cast}`, error);
+                return [];
+            }
+        });
+        const results = await Promise.all(castPromises);
+        const playerProfiles: PlayerProfile[] = results.flat();
+        if (playerProfiles.length === 0) {
+            console.warn("No player profiles were successfully created.");
+            return;
+        }
+        pushToMainContentStream(<CastingScreen cast={playerProfiles} />, Screens.Casting);
+    } catch (error) {
+        console.error("Failed to process cast submission:", error);
+    }
+}
+
+function Deck(props: { deck: string; selected: boolean }): JSX.Element {
+    const [img, setImage] = React.useState("");
+    const [loading, setLoading] = React.useState(true);
+    const deck = props.deck;
+
+    if (loading)
+        randomImageFromFolder(deck).then((img) => {
+            setLoading(false);
+            setImage(img);
+        });
+    const style = props.selected ? { backgroundColor: selectedColor.toHex(), color: "black" } : {};
+    return (
+        <DeckStyle className="column is-6" onClick={() => selectDeckSubject(props.deck)} style={style}>
+            <img src={img} style={{ width: 50, height: 50 }} alt="" />
+            <DeckText>{deck}</DeckText>
+        </DeckStyle>
+    );
+}
+
+function DeckList(props: { data: string[]; i: number; selected: Set<string> }): JSX.Element {
+    let decks: JSX.Element[] = [];
+    const i = props.i;
+    const data = props.data;
+    const min = i * decksPerPage;
+    for (let j = min; j < min + decksPerPage; j++) {
+        const deck = data[j];
+        if (!deck) continue;
+        decks.push(<Deck selected={props.selected.has(deck)} key={`${deck}__${i}__${j}`} deck={deck} />);
+    }
+    return (
+        <div key={"__ul__"} className={"columns is-multiline"}>
+            {decks}
+        </div>
+    );
+}
+
+export class DeckScreen extends React.Component<DeckScreenProps, DeckScreenState> {
+    private subs: Subscription[] = [];
+
+    constructor(props: DeckScreenProps) {
+        super(props);
+        this.state = {
+            loading: true,
+            decks: [],
+            sortedDecks: [],
+            selectedDecks: new Set<string>(),
+            i: 0,
+            isSorted: false,
+            debouncedSearchText: "",
+            searchText: "",
+        };
+    }
+    async componentDidMount() {
+        selectDeckSubject(null);
+        this.subs.push(selectedDecks$.subscribe((selectedDecks) => this.setState({ selectedDecks })));
+        const data = await (await fetch(`${baseUrl}/dir.json`)).json();
+        this.setState({
+            sortedDecks: data.decks,
+            decks: shuffle(data.decks),
+            selectedDecks: new Set<string>(),
+            loading: false,
+        });
+    }
+    componentWillUnmount() {
+        this.subs.forEach((sub) => sub.unsubscribe());
+    }
+
+    private handlePageClick = (page: { selected: number }) => {
+        this.setState({ i: page.selected });
+    };
+
+    private debounceSearch = debounce((nextValue: string) => {
+        this.setState({ debouncedSearchText: nextValue, i: 0 });
+    }, 250);
+
+    private handleSearch = (event: { target: { value: string } }) => {
+        this.setState({ searchText: event.target.value });
+        this.debounceSearch(event.target.value);
+    };
+
+    render() {
+        if (this.state.loading) return <div />;
+        const decks = (this.state.isSorted ? this.state.sortedDecks : this.state.decks).filter((deck) =>
+            deck.toLowerCase().includes(this.state.debouncedSearchText.toLowerCase())
+        );
+        return (
+            <div>
+                <div className="level">
+                    <div className="level-item">
+                        <input
+                            style={{ minWidth: "50%" }}
+                            className="input"
+                            type="text"
+                            placeholder="Search..."
+                            onChange={this.handleSearch}
+                            value={this.state.searchText}
+                        ></input>
+                    </div>
+                    <div className="level-item">
+                        <button
+                            className={`button ${this.state.isSorted ? "is-danger" : "is-primary"}`}
+                            onClick={() => this.setState({ isSorted: !this.state.isSorted })}
+                        >
+                            A/Z
+                        </button>
+                    </div>
+
+                    <div className="level-item">
+                        <button
+                            className="button is-warning"
+                            onClick={() => selectDeckSubject(null)}
+                            disabled={this.state.selectedDecks.size === 0}
+                        >
+                            Unselect All
+                        </button>
+                    </div>
+                    <div className="level-item">
+                        <HasText>{`${this.state.selectedDecks.size} casts selected`}</HasText>
+                    </div>
+                    <div className="level-item">
+                        <button
+                            className="button is-success"
+                            disabled={this.state.selectedDecks.size === 0}
+                            onClick={() => submitCasts(this.state.selectedDecks)}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+                <DeckList
+                    key={"comments"}
+                    selected={this.state.selectedDecks}
+                    data={decks}
+                    i={this.state.i}
+                />
+                <Centered>
+                    <ReactPaginate
+                        key={"__list__"}
+                        previousLabel={"previous"}
+                        nextLabel={"next"}
+                        breakLabel={"..."}
+                        breakClassName={"break-me"}
+                        pageCount={ceil(decks.length / decksPerPage)}
+                        marginPagesDisplayed={2}
+                        pageRangeDisplayed={3}
+                        onPageChange={this.handlePageClick}
+                        containerClassName={"pagination"}
+                        activeClassName={"active"}
+                    />
+                </Centered>
+            </div>
+        );
+    }
+}
