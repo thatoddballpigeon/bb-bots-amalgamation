@@ -1,5 +1,5 @@
 import { getPersonalityClass } from "../../components/playerPortrait/personalities";
-import { Houseguest } from "../../model";
+import { GameState, getHouseguestById, Houseguest } from "../../model";
 import { determineTargetStrategy, determineWinrateStrategy } from "./hitList";
 import { TargetStrategy, WinrateStrategy } from "./targets";
 
@@ -19,11 +19,11 @@ export function generateEvicteeExit(evictees: Houseguest[]): string {
     return text.trim();
 }
 
-export function generateExcuse(hero: Houseguest, decision: number, intent: Intent): string {
-    const entry = hero.hitList.filter((hg) => hg.id === decision)[0];
-    const name = entry.name;
+export function generateExcuse(gameState: GameState, hero: Houseguest, decision: number, intent: Intent): string {
+    const hg = getHouseguestById(gameState, decision);
+    const name = hg.preferredName();
     const popularity = hero.housePopularity;
-    const enemyValue = entry.value;
+    const enemyValue = hg.housePopularity;
     const targetStrategy = determineTargetStrategy(hero);
     const winrateStrategy = determineWinrateStrategy(hero);
     if (winrateStrategy === WinrateStrategy.High) {

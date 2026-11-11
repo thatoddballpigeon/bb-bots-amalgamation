@@ -1,6 +1,5 @@
 import { max } from "lodash";
 import { Houseguest, GameState, excludeHouseguests, inJury, hgPreferredName, nonEvictedHouseguests, getHouseguestById, calculateThreatScore, nonEvictedHouseguestsSplit } from "../../model";
-import { shouldKillNew, selectTargetWithLogic } from "./targets";
 import { getRelationshipStrength } from "../relationshipMap";
 import { getStrongestAlliance, isAllied } from "../alliances";
 import { AllianceTarget } from "../../model/logging/episodeMemory";
@@ -24,52 +23,6 @@ function getIndexFromLogic(nominees: Houseguest[], logic: NumberWithLogic): Numb
         }
     }
     throw new Error(`Attempted to vote for a nominee that was not an option.`);
-}
-
-// Return the index of the save target.
-export function castVoteToSave(hero: Houseguest, nominees: Houseguest[]): NumberWithLogic {
-    if (nominees.length === 0) throw new Error("Tried to cast a vote to save with no nominees.");
-    const logic: NumberWithLogic = selectTargetWithLogic(
-        nominees.map((hg) => hg.id),
-        hero,
-        "good"
-    );
-    return getIndexFromLogic(nominees, logic);
-}
-
-// returns the index in the array of the person you're voting to evict
-export function castEvictionVote(
-    hero: Houseguest,
-    nominees: Houseguest[],
-    gameState: GameState
-): NumberWithLogic {
-    // In the F3 vote, take the person who you have better odds against to F2
-    if (gameState.remainingPlayers === 3) {
-        return castF3Vote(hero, nominees[0], nominees[1]);
-    }
-    // In the F4 vote, do some genius level mathematics to predict what gives you the best odds of winning given that the
-    // person who wins the F3 HoH will evict the person they have the worst odds against
-    if (gameState.remainingPlayers === 4 && inJury(gameState)) {
-        // if self is in nominees, remove self from options here [causes a crash in bbAus F4]
-        const filteredNoms = nominees.filter((hg) => hg.id !== hero.id);
-        const HoH = excludeHouseguests(
-            Array.from(gameState.nonEvictedHouseguests.values()).map((id) => gameState.houseguestCache[id]),
-            [filteredNoms[0], filteredNoms[1], hero]
-        )[0];
-        const filteredResult =
-            hero.id === HoH.id
-                ? castF4voteAsHoH(hero, nominees[0], nominees[1], nominees[2])
-                : castF4vote(hero, filteredNoms[0], filteredNoms[1], HoH);
-        const decision = nominees.findIndex((hg) => hg.id === filteredNoms[filteredResult.decision].id);
-        filteredResult.decision = decision;
-        return filteredResult;
-    }
-    const logic = selectTargetWithLogic(
-        nominees.map((hg) => hg.id),
-        hero,
-        "bad"
-    );
-    return getIndexFromLogic(nominees, logic);
 }
 
 function winningOddsF3(hero: Houseguest, villain1: Houseguest, villain2: Houseguest): number {
@@ -139,9 +92,6 @@ function castF4vote(hero: Houseguest, nom0: Houseguest, nom1: Houseguest, HoH: H
 export function getWorstTarget(hero: Houseguest, options: Houseguest[]): Houseguest {
     const sortedOptions = [...options];
     // worst target is in position 0
-    sortedOptions.sort((hg1, hg2) => {
-        return shouldKillNew(hg1.id, hg2.id, hero) ? -1 : 1;
-    });
     if (sortedOptions.length === 0) throw "Tried to get a worst target from 0 options";
     return sortedOptions[0];
 }
@@ -184,9 +134,6 @@ export function backdoorNPlayers(
     }
     const sortedOptions = [...options];
     // negative value if first is less than second
-    sortedOptions.sort((hg1, hg2) => {
-        return shouldKillNew(hg1.id, hg2.id, hero) ? 1 : -1;
-    });
 
     while (result.length < n) {
         const decision = sortedOptions[result.length];
@@ -257,7 +204,7 @@ export function pickNominationTargets(
     const scored = candidates.map(c => {
         let reason: string = "STRATEGIC";
         const relationship = getRelationshipStrength(gameState, hero, c);
-        const episodeDelta = gameMemory.episodeRelDelta[hero.id][c.id];
+        const episodeDelta = gameMemory.episodeRelDelta[hero.id]?.[c.id];
         const recency = -episodeDelta * 1.2;
         const score = voteTargetScore(splitIndex, gameState, hero, c, "nomination");
 
@@ -309,7 +256,7 @@ export function voteTargetScore(
     const conviction = getConvictionBonus(gameState, v, t, context === 'nomination' ? 'nomination' : 'eviction');
     const strongestAlliance = allied ? getStrongestAlliance(gameState, v, t) : null;
     const allianceStrength = strongestAlliance?.strength ?? 5;
-    const loyaltyTrait = voterTraits[1] ?? 0; // d1 loyalty: -1 to 1
+    const loyaltyTrait = voterTraits[1]; // d1 loyalty: -1 to 1
     const loyaltyMult = 1 + loyaltyTrait * 0.35; // 0.65x (disloyal) to 1.35x (very loyal)
     const allianceWeight = context === 'nomination'
         ? -(8 + allianceStrength * 0.7) * loyaltyMult

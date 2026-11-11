@@ -100,7 +100,7 @@ async function submitCasts(casts: Set<string>): Promise<void> {
                         disableShowmances: false,
                         attractedTo: defaultAttraction,
                         intruder: { isIntruder: false, introWeek: 0 },
-                        secretTwin: { isTwin: false, isPrimaryTwin: false, twinPartner: null, twinEntryEpisode: null },
+                        secretTwin: { isTwin: false, isPrimaryTwin: false, twinPartner: null, twinEntryEpisode: null, twinEntryCancelled: false },
                         popularity: { fame: null, popularity: 50, startPopularity: undefined, _popTouched: false },
                     };
                 });

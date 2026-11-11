@@ -1,6 +1,4 @@
 import React from "react";
-import { PortraitDisplayMode, powerMode } from "../../model/portraitDisplayMode";
-import { displayMode$, getSelectedPlayer, selectedPlayer$ } from "../../subjects/subjects";
 import { Subscription } from "rxjs";
 import { GameState } from "../../model";
 import { EpisodeLog } from "../../model/logging/episodeLog";

@@ -78,7 +78,7 @@ export class HouseguestPortraitController {
                 this.view.setState({ housePopularity: 2, powerRanking: 2 });
             } else {
                 this.view.setState({
-                    housePopularity: data.relationships[this.view.props.id!].strength,
+                    housePopularity: data.housePopularity,
                     powerRanking: this.comparePowerRankings(data),
                 });
             }

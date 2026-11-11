@@ -6,6 +6,7 @@ export interface SecretTwin {
     isPrimaryTwin: boolean;
     twinPartner: number | null;
     twinEntryEpisode: number | null;
+    twinEntryCancelled: boolean;
 }
 
 export function toggleSecretTwin(player: PlayerProfile, checked: boolean): PlayerProfile {

@@ -116,7 +116,7 @@ function friendOrEnemyTitle(hero: PortraitProps, villain: SelectedPlayerData): s
     const titles: string[] = [];
     titles.push(
         RelationshipTypeToSymbol[
-            classifyRelationship(hero.housePopularity || 0, villain.housePopularity, hero.relationships![villain.id].friendship)
+            classifyRelationship(hero.housePopularity || 0, villain.housePopularity, 0)
         ]
     );
     return titles;

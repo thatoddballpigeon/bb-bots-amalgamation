@@ -1,6 +1,5 @@
 import { GameState, Houseguest, MutableGameState, nonEvictedHouseguests, hgPreferredName } from "../../../model";
 import { Scene } from "./scene";
-import { castEvictionVote } from "../../../utils/ai/aiApi";
 import { ProfileHouseguest } from "../../memoryWall";
 import { Portrait, Portraits } from "../../playerPortrait/portraits";
 import { NextEpisodeButton } from "../../nextEpisodeButton/nextEpisodeButton";
@@ -12,7 +11,7 @@ import { evictHouseguest } from "../utilities/evictHouseguest";
 export function finalEvictionScene(initialGameState: GameState, HoH: Houseguest): [GameState, Scene] {
     const newGameState = new MutableGameState(initialGameState);
     const nominees = nonEvictedHouseguests(newGameState).filter((hg) => hg.id !== HoH.id);
-    const { decision: vote, reason } = castEvictionVote(HoH, nominees, newGameState);
+    const { decision: vote, reason } = { decision: 0, reason: ""};
     const evictee = nominees[vote];
     const survivor = nominees[vote === 1 ? 0 : 1];
     newGameState.currentLog.soleVoter = HoH.preferredName(true);

@@ -1,7 +1,7 @@
 import React from "react";
 import { PlayerProfile } from "../../model";
 import { Portraits } from "../playerPortrait/portraits";
-import { RelationshipMap } from "../../utils";
+import { Relationships } from "../../utils";
 import { Tribe } from "../../model/tribe";
 import { TribeContainer } from "./tribeContainer";
 
@@ -12,7 +12,7 @@ export interface MemoryWallProps {
 
 export interface ProfileHouseguest extends PlayerProfile {
     id?: number;
-    relationships?: RelationshipMap;
+    relationships?: Record<number, Relationships>;
     isEvicted?: boolean;
     isJury?: boolean;
     isHidden?: boolean;

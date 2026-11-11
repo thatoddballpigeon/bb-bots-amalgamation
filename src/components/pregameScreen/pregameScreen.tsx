@@ -13,12 +13,12 @@ import { DeckScreen } from "../deckScreen/deckScreen";
 import { EditRelationshipsScreen, getProfiles } from "../editRelationshipsScreen/editRelationshipScreen";
 import { Tribe } from "../../model/tribe";
 import { selectPlayer } from "../playerPortrait/selectedPortrait";
-import { Relationship } from "../../utils";
+import { Relationship, Relationships } from "../../utils";
 
 interface PregameScreenOptions {
     initialTribes?: Tribe[];
     currentTribes?: { [id: number]: Tribe };
-    relationships?: { [id: number]: { [id: number]: Relationship } }; // hero -> villain -> relationship
+    relationships?: Record<number, Record<number, Relationships>>; // hero -> villain -> relationship
 }
 
 export interface PregameScreenProps {

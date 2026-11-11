@@ -97,7 +97,7 @@ export function CastingScreen({ cast, ...props }: CastingScreenProps) {
             const nameStr = Array.isArray(p.name) 
                 ? p.name.join(" ").trim() 
                 : (p.name || `Contestant ${idx + 1}`);
-            return { id: p.castingScreenId ?? -1, name: nameStr };
+            return { id: idx ?? -1, name: nameStr };
         }).sort((a, b) => a.name.localeCompare(b.name));
     }, [players]);
 
@@ -129,10 +129,32 @@ export function CastingScreen({ cast, ...props }: CastingScreenProps) {
 
             setPlayers((prevPlayers) => {
                 const updatedPlayers = [...prevPlayers];
-                const length = json.length;
-                for (let i = 0; i < length; i++) {
+                const indexOffset = prevPlayers.length; 
+                const newlyAddedPlayers: PlayerProfile[] = [];
+
+                for (let i = 0; i < json.length; i++) {
                     const data = json[i];
-                    newPlayer(updatedPlayers, data); 
+                    const player = newPlayer(data);
+                    
+                    updatedPlayers.push(player);
+                    newlyAddedPlayers.push(player);
+                }
+
+                for (let i = 0; i < json.length; i++) {
+                    const data = json[i];
+                    const importedTwinIndex = data.secretTwin.twinPartner;
+                    const globalPlayerIndex = indexOffset + i;
+                    const player = updatedPlayers[globalPlayerIndex];
+                    if (
+                        player.secretTwin.isTwin && 
+                        typeof importedTwinIndex === "number" && 
+                        importedTwinIndex >= 0 && 
+                        importedTwinIndex < json.length
+                    ) {
+                        const globalPartnerIndex = indexOffset + importedTwinIndex;
+                        const partner = updatedPlayers[globalPartnerIndex - 1];
+                        player.secretTwin.twinPartner = globalPartnerIndex - 1;
+                    }
                 }
                 return updatedPlayers;
             });
@@ -196,16 +218,13 @@ export function CastingScreen({ cast, ...props }: CastingScreenProps) {
     const addPlayers = useCallback((_amount: number) => {
         setPlayers((prevPlayers) => {
             const updatedPlayers = [...prevPlayers];
-            for (let i = 0; i < _amount; i++) newPlayer(updatedPlayers);
+            for (let i = 0; i < _amount; i++) updatedPlayers.push(newPlayer());
             return updatedPlayers;
         });
     }, []);
 
-    const newPlayer = (
-        players: PlayerProfile[],
-        data: Partial<CharacterSheetData> = {}
-    ) => {
-        players.push({
+    const newPlayer = (data: Partial<CharacterSheetData> = {}): PlayerProfile => {
+        return {
             imageURL: "",
             name: ["", "", ""],
             alias: "",
@@ -218,13 +237,25 @@ export function CastingScreen({ cast, ...props }: CastingScreenProps) {
             stats: newStatsMap(),
             traits: [0, 0, 0, 0, 0, 0, 0, 0],
             intruder: { isIntruder: false, introWeek: 2 },
-            secretTwin: { isTwin: false, isPrimaryTwin: false, twinPartner: null, twinEntryEpisode: 5 },
-            popularity: { fame: null, popularity: 50 },
             disableShowmances: false,
             attractedTo: defaultGenderAttraction("Female"),
             ...data,
+            // more, MORE SPREADING...
+            secretTwin: {
+                isTwin: false,
+                isPrimaryTwin: false,
+                twinPartner: null,
+                twinEntryEpisode: 5,
+                twinEntryCancelled: false,
+                ...data.secretTwin
+            },
+            popularity: { 
+                fame: null, 
+                popularity: 50,
+                ...data.popularity
+            },
             castingScreenId: id++,
-        });
+        };
     }
 
     const handleImageURL = useCallback((index: number) => {
@@ -250,7 +281,36 @@ export function CastingScreen({ cast, ...props }: CastingScreenProps) {
     const handleDelete = useCallback((index: number, castingScreenId: number): void => {
         setPlayers((prevPlayers) => {
             const updatedPlayers = [...prevPlayers];
-            updatedPlayers.splice(index - 1, 1);
+            const targetIndex = index - 1;
+            updatedPlayers.splice(targetIndex, 1);
+            for (let i = 0; i < updatedPlayers.length; i++) {
+                const player = updatedPlayers[i];
+                const secretTwin = player.secretTwin;
+                const partnerIndex = secretTwin.twinPartner;
+
+                if (secretTwin.isTwin && typeof partnerIndex === "number") {
+                    if (partnerIndex === targetIndex) {
+                        updatedPlayers[i] = {
+                            ...player,
+                            secretTwin: {
+                                ...secretTwin,
+                                isTwin: false,
+                                isPrimaryTwin: false,
+                                twinPartner: null,
+                                twinEntryEpisode: null
+                            }
+                        };
+                    } else if (partnerIndex > targetIndex) {
+                        updatedPlayers[i] = {
+                            ...player,
+                            secretTwin: {
+                                ...secretTwin,
+                                twinPartner: partnerIndex - 1
+                            }
+                        };
+                    }
+                }
+            }
             return updatedPlayers;
         });
 
@@ -384,8 +444,8 @@ export function CastingScreen({ cast, ...props }: CastingScreenProps) {
                             const other = updatedPlayers[j];
                             const secretTwin = other.secretTwin;
                             
-                            if (secretTwin.isTwin && (secretTwin.twinPartner === index || secretTwin.twinPartner === partner || other.castingScreenId === partner)) {
-                                if (secretTwin.twinPartner === partner || other.castingScreenId === partner) {
+                            if (secretTwin.isTwin && (secretTwin.twinPartner === index || secretTwin.twinPartner === partner)) {
+                                if (secretTwin.twinPartner === partner) {
                                     updatedPlayers[j] = {
                                         ...other,
                                         secretTwin: {

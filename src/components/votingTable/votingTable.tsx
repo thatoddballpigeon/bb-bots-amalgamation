@@ -109,7 +109,7 @@ export function generateVotingTable(gameState: GameState): JSX.Element {
         iterateLogs.forEach((log: EpisodeLog | undefined) => {
             // either no log (table headers) or a nonpseudo log
             if (!log || !log.pseudo) {
-                generatePreVetoRow(log, week, preVetoCells, pseudoCount);
+                generatePreVetoRow(log, week, preVetoCells, gameState, pseudoCount);
                 generateVetoRow(log, week, vetoCells, pseudoCount);
                 generateEvictedRow(log, week, evictedCells, winnerCells, gameState, pseudoCount);
             }
@@ -324,6 +324,7 @@ function generatePreVetoRow(
     log: EpisodeLog | undefined,
     week: number,
     cells: JSX.Element[],
+    gameState: GameState,
     pseudoCount: number
 ) {
     if (!log) {
@@ -363,7 +364,7 @@ function generatePreVetoRow(
             <Centered noMargin={true}>
                 {interleave(
                     [
-                        ...log.nominationsPreVeto,
+                        ...log.nominationsPreVeto.map(id => getHouseguestById(gameState, id).preferredName()),
                         ...log.strikethroughNominees.map((txt) => <del>{txt}</del>),
                     ] as any,
                     (key) => (

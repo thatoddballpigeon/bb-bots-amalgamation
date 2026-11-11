@@ -2,7 +2,7 @@ import { TVRatings } from "../../components/episode/utilities/tvRatings";
 import { VoteType } from "./voteType";
 
 export class EpisodeLog {
-    public nominationsPreVeto: string[] = [];
+    public nominationsPreVeto: number[] = [];
     public vetoWinner: string[] = [];
     public winner?: number;
     public runnerUp?: number;

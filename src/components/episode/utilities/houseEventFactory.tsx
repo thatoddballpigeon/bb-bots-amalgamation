@@ -9,28 +9,19 @@ import {
     nonEvictedHouseguests,
 } from "../../../model";
 import React from "react";
-import { relationshipUpdate$ } from "../../../components/editRelationshipsScreen/editRelationshipScreen";
 import { getArchetypeClass, isRomanceArchetype } from "../../playerPortrait/archetypes";
-import { isNotNull, randomArrayIndex, randomInt, updateRelationship, updateRomance } from "../../../utils";
+import { getRomanceStrength, isNotNull, linear_transform, randomArrayIndex, randomInt, StatsMap, updateRelationship, updateRomance } from "../../../utils";
 import { HOUSE_EVENTS, HOUSE_STRATEGY_EVENTS, HouseEvent, HouseEventConfig } from "./houseEvents";
 import { checkAllianceFormation, hasActiveShowmance, SHOWMANCE_FORM_THRESHOLD, showmanceAttractionMatches } from "../../../utils/alliances";
 import { personalityRelMulti } from "../../playerPortrait/personalities";
-import { CLASS_POP_DRIFT, CLASS_POP_SKEW, fameOf, POP_DRIFT_DEFAULT } from "../../../utils/popularity";
 import { HouseEventsSceneOptions } from "../scenes/houseEventsScene";
 import _, { shuffle } from "lodash";
 import { generateConfessionalEvents } from "./confessionalEventFactory";
 import { voteTargetScore } from "../../../utils/ai/aiApi";
 import { allianceEvents } from "./allianceEventFactory";
-
-export interface HouseConfessional {
-    houseguests: Houseguest[];
-    type: string;
-    tags: string[];
-}
+import { updateEventPopularity } from "../../../utils/popularity";
 
 let currentCategory: string | null = null;
-let currentSplitIndex: number | null | undefined;
-let currentGameState: GameState;
 let confessionals: any[] = [];
 
 export function boldText(text: string) {
@@ -38,15 +29,14 @@ export function boldText(text: string) {
 }
 
 export function generateHouseEvents(
-    gameState: GameState,
     splitIndex: number | null | undefined,
+    gameState: GameState,
+    povWinners: Houseguest[],
     hohWinners: Houseguest[],
     nominees: Houseguest[],
     options: HouseEventsSceneOptions
 ): HouseEvent[] {
     let events: any[] = [];
-    currentSplitIndex = splitIndex;
-    currentGameState = gameState;
     const house = nonEvictedHouseguestsSplit(splitIndex, gameState);
     const len = house.length;
 
@@ -81,7 +71,7 @@ export function generateHouseEvents(
         const cat = item.category;
         const isPos = cat === "bonding" || cat === "spotlight" ||
             (cat === "showmance" && item.type !== "negative") ||
-            ((cat === "communal" || cat === "exercise" || cat === "romance") && item.type === "positive");
+            ((cat === "communal" || cat === "exercise" || cat === "romance" || cat === "confessional") && item.type === "positive");
 
         const weightMultiplier = isPos ? posProb : negProb;
         const w = getEventWeight(gameState, item) * weightMultiplier;
@@ -96,8 +86,10 @@ export function generateHouseEvents(
     }
     weighted.sort((a, b) => a.key - b.key);
 
-    if (options && !["sunrise", "night"].includes(currentTimeOfDay))
-        events.push(...generateHouseStrategyEvents(gameState, splitIndex, hohWinners, nominees, options));
+    if (!["sunrise", "night"].includes(currentTimeOfDay)) {
+        options.veto && events.push(...generateBeforeVetoEvents(gameState, splitIndex, povWinners, hohWinners, nominees));
+        options.eviction && events.push(...generateBeforeEvictionEvents(gameState, splitIndex, hohWinners, nominees));
+    }
 
     const max = randomInt(7, 9);
     for (let i = 0; i < weighted.length; i++) {
@@ -149,12 +141,69 @@ export function generateHouseSpecialEvents(
     });
     return events;
 }
-export function generateHouseStrategyEvents(
+
+export function generateBeforeVetoEvents(
+    gameState: GameState,
+    splitIndex: number | null | undefined,
+    povWinners: Houseguest[],
+    hohWinners: Houseguest[],
+    nominees: Houseguest[],
+) {
+    let events: any[] = [];
+
+    const preVetoPool: any[] = [];
+    const gameMemory = gameState.memory;
+    const houseguests = nonEvictedHouseguestsSplit(splitIndex, gameState).filter(hg => !hg.isHidden);
+    if (povWinners && houseguests.length > 3) {
+        const pushTarget = randomPlayer(nominees);
+        const pov = randomPlayer(povWinners);
+        const povIsNom = nominees.some(nom => nom.id === pov.id)
+
+        const restrictedHohIds = new Set(
+            hohWinners
+                .filter(record => record.hoh.nominated.some(nom => nom.id === pushTarget.id))
+                .map(record => record.id)
+        );
+        const swingPool = houseguests.filter(guest => !restrictedHohIds.has(guest.id));
+        const swing = swingPool.length ? randomPlayer(swingPool) : null;
+        if (swing && nominees.length && !povIsNom) {
+            const povIsHoH = hohWinners.some(hoh => hoh.id === pov.id)
+            const charisma = swing.stats.charisma;
+            const baseChance = (povIsHoH ? 0.3 : 0.03) + (charisma - 5) * (povIsHoH ? 0.06 : 0.02);
+            const persuaded = Math.random() < baseChance;
+            const sN = hgPreferredName(swing);
+            const vN = hgPreferredName(pov);
+            const tN = hgPreferredName(pushTarget);
+            preVetoPool.push(() => {
+                if (!gameMemory.lobbyingLog[pov.id]) gameMemory.lobbyingLog[pov.id] = {};
+                gameMemory.lobbyingLog[pov.id][pushTarget.id] = { target: pushTarget, direction: 'veto_save', persuaded };
+                const consolidateEvents = HOUSE_STRATEGY_EVENTS.consolidateVeto;
+                persuaded && applyRelationship(gameState, pov, swing, 10, 0.5);
+                return {
+                    category: 'strategy',
+                    portraits: [pov, swing],
+                    locations: ["Living Room", "Kitchen", "Backyard", "Bedroom"],
+                    text: `${consolidateEvents[randomArrayIndex(consolidateEvents)](sN, vN, tN)} Whether it worked will have to wait for the ceremony.`,
+                };
+            });
+        }
+    }
+
+    const max = randomInt(7, 9);
+    const shuffledPool = shuffle(preVetoPool);
+    const poolCount = Math.min(shuffledPool.length, Math.floor(max / 2));
+    for (let i = 0; i < poolCount; i++) {
+        const evt = shuffledPool[i]();
+        if (evt) events.push(evt);
+    }
+    return events;
+}
+
+export function generateBeforeEvictionEvents(
     gameState: GameState,
     splitIndex: number | null | undefined,
     hohWinners: Houseguest[],
     nominees: Houseguest[],
-    options: HouseEventsSceneOptions
 ) {
     let events: any[] = [];
 
@@ -163,25 +212,34 @@ export function generateHouseStrategyEvents(
     const gameMemory = gameState.memory;
     const houseguests = nonEvictedHouseguestsSplit(splitIndex, gameState).filter(hg => !hg.isHidden);
 
-    const alliancePairs: Houseguest[][] = _(gameState.alliances)
-        .filter({ isActive: true })
-        .map(al => al.members.map(id => houseguests.find(c => c.id === id)))
-        .filter(pair => pair.every(Boolean) as boolean)
-        .value() as Houseguest[][];
+    const hgMap = new Map(houseguests.map(hg => [hg.id, hg]));
 
-    if (_.isEmpty(alliancePairs)) {
-        alliancePairs.push(..._.flatMap(houseguests, (hg1, i) => 
-            _.slice(houseguests, i + 1)
-                .filter(hg2 => hg1.relationshipWith(gameState, hg2) >= 50 && hg2.relationshipWith(gameState, hg1) >= 50)
-                .map(hg2 => [hg1, hg2])
-        ));
+    const alliancePairs: Houseguest[][] = gameState.alliances
+        .filter(al => al.isActive)
+        .map(al => al.members.map(id => hgMap.get(id)))
+        .filter(pair => pair.every(Boolean)) as Houseguest[][];
+
+    if (alliancePairs.length === 0) {
+        const len = houseguests.length;
+        for (let i = 0; i < len; i++) {
+            const hg1 = houseguests[i];
+            for (let j = i + 1; j < len; j++) {
+                const hg2 = houseguests[j];
+                if (
+                    hg1.relationshipWith(gameState, hg2) >= 50 && 
+                    hg2.relationshipWith(gameState, hg1) >= 50
+                ) {
+                    alliancePairs.push([hg1, hg2]);
+                }
+            }
+        }
     }
 
     if (nominees.length) {
         const nom = randomPlayer(nominees);
         const nN = hgPreferredName(nom);
         const charisma = nom.stats.charisma || 5;
-        const popSwing = charisma >= 7 ? 20 : charisma <= 3 ? -20 : 10;
+        const popSwing = charisma >= 7 ? 2 : charisma <= 3 ? -2 : 1;
         preEvictionPool.push(() => {
             const standWinEvents = HOUSE_STRATEGY_EVENTS.standWin;
             const standLoseEvents = HOUSE_STRATEGY_EVENTS.standLose;
@@ -221,7 +279,7 @@ export function generateHouseStrategyEvents(
             if (!voters.length) return;
 
             const voter = randomPlayer(voters);
-            const nN = hgPreferredName(nominee);
+            const nN = nominee.preferredName();
             const vN = hgPreferredName(voter);
             const charisma = nominee.stats.charisma;
             const baseChance = 0.35 + (charisma - 5) * 0.06;
@@ -300,7 +358,7 @@ export function generateHouseStrategyEvents(
             }
         }
 
-        if (options.eviction && gameState.timeOfDay === "afternoon") { // should only happen once, really
+        if (gameState.timeOfDay === "afternoon") { // should only happen once, really
             const activeAlliances = (gameState.alliances || []).filter(al => {
                 if (!al.isActive) return false;
                 const aliveMembers = al.members.filter(id => houseguests.some(c => c.id === id));
@@ -312,9 +370,9 @@ export function generateHouseStrategyEvents(
                 // Track players already committed to a stronger alliance this episode
                 const committedElsewhere = new Set();
                 sortedByStrength.forEach((al, idx) => {
-                    const allAliveMembers = al.members.map(id => houseguests.find(c => c.id === id)).filter(Boolean);
-                    const nominated = allAliveMembers.filter((c): c is Houseguest => !!c).filter(m => nominees.some(n => n.id === m.id));
-                    const voterMembers = allAliveMembers.filter((c): c is Houseguest => !!c).filter(m => !nominees.some(n => n.id === m.id) && !m.hoh.isHoH);
+                    const allAliveMembers = al.members.map(id => houseguests.find(c => c.id === id)).filter(isNotNull);
+                    const nominated = allAliveMembers.filter(m => nominees.some(n => n.id === m.id));
+                    const voterMembers = allAliveMembers.filter(m => !nominees.some(n => n.id === m.id) && !m.hoh.isHoH);
                     const hasNomineeInAlliance = nominated.length > 0;
 
                     if (voterMembers.length < 2) return;
@@ -376,15 +434,15 @@ export function generateHouseStrategyEvents(
                         eventDetail = `Target: <strong>${tN}</strong>. <strong>${cN}</strong> campaigned but the alliance is split (${allCommitted.length}/${voterMembers.length})${nomineeInAllianceNote}.`;
                     }
 
+                    const committed = allCommitted.map(mv => mv.member);
                     if (idx === 0) {
                         events.push({
                             category: "strategy",
-                            portraits: [...allCommitted.map(mv => mv.member)],
+                            portraits: [...committed],
                             locations: ["Bedroom"],
                             text: villaNarrative,
                         });
                     }
-                    const committed = allCommitted.map(mv => mv.member);
                     const fenced = voterMembers.filter(m => !committed.some(c => c.id === m.id));
                     allianceEvents.push({ type: 'coord', alliance: al, target, campaigner, committed, fenced, nominated });
                 });
@@ -392,7 +450,7 @@ export function generateHouseStrategyEvents(
         }
     }
 
-    if (hohWinners && options.eviction && houseguests.length > 3) {
+    if (hohWinners && houseguests.length > 3) {
         const swingPool = excludeHouseguests(houseguests, hohWinners || []).filter(c => !nominees?.some(n => n.id === c.id));
         const swing = swingPool.length ? randomPlayer(swingPool) : null;
         if (swing && nominees.length) {
@@ -405,12 +463,12 @@ export function generateHouseStrategyEvents(
                 if (!gameMemory.lobbyingLog[swing.id]) gameMemory.lobbyingLog[swing.id] = {};
                 gameMemory.lobbyingLog[swing.id][pushTarget.id] = { direction: 'evict', persuaded: true };
                 const consolidateEvents = HOUSE_STRATEGY_EVENTS.consolidateEviction;
-                applyRelationship(gameState, hoh, swing, 1, 0.5);
+                applyRelationship(gameState, hoh, swing, 10, 0.5);
                 return {
                     category: 'strategy',
                     portraits: [hoh, swing],
                     locations: ["Head of Household Room"],
-                    text: `${consolidateEvents[randomArrayIndex(consolidateEvents)](hN, sN, tN)} It came straight from the Head Hasbeen, which is the part that matters.`,
+                    text: `${consolidateEvents[randomArrayIndex(consolidateEvents)](hN, sN, tN)} It came straight from the Head of Household, which is the part that matters.`,
                 };
             });
         }
@@ -434,22 +492,96 @@ function getEventWeight(gameState: GameState, event: HouseEventConfig): number {
     return 1;
 }
 
-function classWeightFuncForCategory(category: string | null) {
+function groupSizeWeight(c: Houseguest, size: number) {
+    const groupWeights = GROUP_SIZE_EVENT_WEIGHTS as Record<string, Record<number, number>>;
+    const archetype = c.archetype;
+    const cls = getArchetypeClass(archetype);
+    return cls ? groupWeights[cls]?.[(size || 1)] ?? 1 : 1;
+}
+
+function traitWeightForCategory(category: string, stats: StatsMap, traits: number[]) {
+    const warmth = traits[0];
+    const loyalty = traits[1];
+    const authenticity = traits[2];
+    const cooperation = traits[3];
+    const composure = traits[4];
+    const ego = traits[5];
+    const trust = traits[6];
+    const intensity = traits[7];
+
+    const normalizeStat = (val: number) => -1 + ((val - 1) * 2) / 9;
+    const physical = normalizeStat(stats.physical);
+    const mental = normalizeStat(stats.mental);
+    const endurance = normalizeStat(stats.endurance);
+    const charisma = normalizeStat(stats.charisma);
+    const luck = normalizeStat(stats.luck);
+    const temper = normalizeStat(stats.temper);
+
+    let weight: number = 0;
+    switch (category) {
+        case "bonding":
+            weight = ((charisma * 0.9) + (loyalty * 0.7) + (trust * 0.6) + (authenticity * 0.5) + (warmth * 0.3)) / 3.0;
+            break;
+        case "communal":
+            weight = ((cooperation * 0.8) + (charisma * 0.7) + (temper * 0.5) + (warmth * 0.4) + (-ego * 0.4)) / 2.8;
+            break;
+        case "confessional":
+            const baseFrequencyBoost = 1.3; 
+            const personalityInfluence = ((charisma * 0.7) + (ego * 0.6) + (intensity * 0.5) + (-temper * 0.4)) / 2.2;
+            weight = Math.min(1, baseFrequencyBoost + (personalityInfluence * 0.5));
+            break;
+        case "drama":
+            weight = ((intensity * 0.8) + (-temper * 0.8) + (ego * 0.6) + (-composure * 0.6)) / 2.8;
+            break;
+        case "exercise":
+            weight = (physical + (intensity * 0.7) + (endurance * 0.5) + (composure * 0.2)) / 2.4;
+            break;
+        case "rivalry":
+            weight = ((intensity * 0.8) + (mental * 0.7) + (physical * 0.6) + (ego * 0.5) + (-cooperation * 0.4)) / 3.0;
+            break;
+        case "romance":
+            weight = (charisma + (warmth * 0.7) + (-authenticity * 0.5) + (intensity * 0.4)) / 2.6;
+            break;
+        case "sabotage":
+            weight = ((luck * 0.8) + (mental * 0.7) + (ego * 0.6) + (-loyalty * 0.5) + (-trust * 0.4)) / 3.0;
+            break;
+        case "spotlight":
+            weight = (ego + (intensity * 0.8) + (-composure * 0.3)) / 2.1;
+            break;
+        case "showmance":
+            weight = ((charisma * 0.9) + (endurance * 0.6) + (ego * 0.6) + (warmth * 0.5)) / 2.6;
+            break;
+        default:
+            break;
+    }
+    return linear_transform(weight, -1, 1, 0.01, 2);
+}
+
+function totalWeightFuncForCategory(category: string | null, size?: number) {
     if (!category) return null;
-    const weights = CLASS_EVENT_WEIGHTS as Record<string, Record<string, number | null>>;
-    const hasAny = Object.values(weights).some(m => m[category] != null);
+    const archClassWeights = ARCHETYPE_CLASS_EVENT_WEIGHTS as Record<string, Record<string, number>>;
+    const hasAny = Object.values(archClassWeights).some(m => m[category] !== null);
     if (!hasAny) return null;
-    return (c: string) => {
-        const cls = getArchetypeClass(c);
-        const w = cls && weights[cls]?.[category]
-        return w !== null ? w : 1;
+    const archWeights = ARCHETYPE_EVENT_WEIGHTS as Record<string, Record<string, number>>;
+    const groupWeights = GROUP_SIZE_EVENT_WEIGHTS as Record<string, Record<number, number>>;
+    return (c: Houseguest) => {
+        const archetype = c.archetype;
+        const stats = c.stats;
+        const traits = c.traits;
+        const cls = getArchetypeClass(archetype);
+        const aCW = cls ? archClassWeights[cls]?.[category] ?? 1 : 1;
+        const aW = archWeights[archetype]?.[category] ?? 1;
+        const tW = traitWeightForCategory(category, stats, traits);
+        const gW = cls ? groupWeights[cls]?.[(size || 1)] ?? 1 : 1;
+        return aCW * aW * tW * gW;
     };
 }
 
-function resolveWeightFunc(weightFunc?: any) {
-    return weightFunc || classWeightFuncForCategory(currentCategory);
+function resolveWeightFunc(weightFunc?: (p: Houseguest) => number, size?: number) {
+    return weightFunc || totalWeightFuncForCategory(currentCategory, size);
 }
 
+// this is actually just fucking wack
 function randomPlayerWeighted<T>(players: T[], weightFunc: (p: T) => number): T {
     const weights = players.map(x => Math.max(0.01, weightFunc(x)));
     const total = weights.reduce((s, w) => s + w, 0);
@@ -459,8 +591,8 @@ function randomPlayerWeighted<T>(players: T[], weightFunc: (p: T) => number): T 
 }
 
 function randomPlayersWeighted(players: Houseguest[], amount: number, weightFunc: (p: Houseguest) => number): Houseguest[] {
-    const pool = [...players];
-    const chosen = [];
+    const pool: Houseguest[] = [...players];
+    const chosen: Houseguest[] = [];
     for (let i = 0; i < amount && pool.length; i++) {
         const c: Houseguest = randomPlayerWeighted(excludeHouseguests(pool, chosen), weightFunc);
         chosen.push(c);
@@ -481,23 +613,31 @@ function getValidHouseguests(
 export function validSolo(
     splitIndex: number | null | undefined,
     gameState: GameState,
+    size?: number,
     filter?: (p: Houseguest) => boolean,
     weightFunc?: (p: Houseguest) => number
 ): Houseguest | null {
     const pool = getValidHouseguests(splitIndex, gameState, filter);
     if (!pool.length) return null;
-    const wf = resolveWeightFunc(weightFunc);
+    const wf = resolveWeightFunc(weightFunc, size ?? 1);
     return wf ? randomPlayerWeighted(pool, wf) : randomPlayer(pool);
 }
 
-export function validVillain(splitIndex: number | null | undefined, gameState: GameState) {
-    return validSolo(splitIndex, gameState, c => c.stats.temper <= 4) || validSolo(splitIndex, gameState);
+export function validVillain(splitIndex: number | null | undefined, gameState: GameState, size?: number) {
+    const pool = getValidHouseguests(splitIndex, gameState);
+    if (!pool.length) return null;
+    return randomPlayerWeighted(pool, c => {
+        const traits = c.traits;
+        const composure = traits[4], intensity = traits[7], ego = traits[5], warmth = traits[0], cooperation = traits[3];
+        const weight = ((composure * 0.9) + (intensity * 0.8) + (ego * 0.8) + (-warmth * 0.7) + (-cooperation * 0.6)) / 3.8;
+        return linear_transform(weight, -1, 1, 0.01, 2);
+    });
 }
 
 export function validTarget(splitIndex: number | null | undefined, gameState: GameState, target: Houseguest) {
     const pool = getValidHouseguests(splitIndex, gameState, c => c.id !== target.id);
     if (!pool.length) return null;
-    const withRel = pool.filter(c => target.interactedWith.has(c.id));
+    const withRel = pool.filter(c => gameState.relationships[c.id]?.[target.id] !== undefined);
     return withRel.length ? randomPlayer(withRel) : randomPlayer(pool);
 }
 
@@ -513,7 +653,7 @@ export function validFrameTarget(splitIndex: number | null | undefined, gameStat
 export function validPair(splitIndex: number | null | undefined, gameState: GameState, weightFunc?: (p: Houseguest) => number): Houseguest[] | null {
     const pool = getValidHouseguests(splitIndex, gameState);
     if (pool.length < 2) return null;
-    const wf = resolveWeightFunc(weightFunc);
+    const wf = resolveWeightFunc(weightFunc, 2);
     const a = wf ? randomPlayerWeighted(pool, wf) : randomPlayer(pool);
     const b = wf ? randomPlayerWeighted(excludeHouseguests(pool, [a]), wf) : randomPlayer(excludeHouseguests(pool, [a]));
     return [a, b];
@@ -558,7 +698,7 @@ export function validAttractedPair(splitIndex: number | null | undefined, gameSt
         }
     
     return pairs.length ? randomPlayerWeighted(pairs, ([a, b]) => {
-        const avgRomance = (a.romanceWith(gameState, b) + b.romanceWith(gameState, a)) / 2;
+        const avgRomance = getRomanceStrength(gameState, a, b);
         const nearFormation = avgRomance >= SHOWMANCE_FORM_THRESHOLD ? 2 : 0;
         return 1 + (isRomanceArchetype(a) ? 2 : 0) + (isRomanceArchetype(b) ? 2 : 0) + Math.min(avgRomance, 6) + nearFormation;
     }) : null;
@@ -574,7 +714,7 @@ export function validShowmancePair(splitIndex: number | null | undefined, gameSt
         const a = alive.find(c => c.id === pair.members[0]);
         const b = alive.find(c => c.id === pair.members[1]);
         if (!a || !b) return 0;
-        const avgRomance = (a.romanceWith(gameState, b) + b.romanceWith(gameState, a)) / 2;
+        const avgRomance = getRomanceStrength(gameState, a, b);
         return 1 + (isRomanceArchetype(a) ? 2 : 0) + (isRomanceArchetype(b) ? 2 : 0) + Math.min(avgRomance, 6);
     });
     const a = alive.find(c => c.id === al.members[0]);
@@ -583,19 +723,19 @@ export function validShowmancePair(splitIndex: number | null | undefined, gameSt
     return [a, b];
 }
 
-export function validTrio(weightFunc?: (p: Houseguest) => number): Houseguest[] | null {
-    const pool = getValidHouseguests(currentSplitIndex, currentGameState);
+export function validTrio(splitIndex: number | null | undefined, gameState: GameState, weightFunc?: (p: Houseguest) => number): Houseguest[] | null {
+    const pool = getValidHouseguests(splitIndex, gameState);
     if (pool.length < 3) return null;
-    const wf = resolveWeightFunc(weightFunc);
+    const wf = resolveWeightFunc(weightFunc, 3);
     if (!wf) return shuffle(pool).slice(0, 3);
     return randomPlayersWeighted(pool, 3, wf);
 }
     
-export function validGroup(amount: number, weightFunc?: (p: Houseguest) => number): Houseguest[] | null {
-    const pool = getValidHouseguests(currentSplitIndex, currentGameState);
+export function validGroup(splitIndex: number | null | undefined, gameState: GameState, amount: number, weightFunc?: (p: Houseguest) => number): Houseguest[] | null {
+    const pool = getValidHouseguests(splitIndex, gameState);
     if (pool.length < amount) return null;
     const size = Math.min(pool.length, amount);
-    const wf = resolveWeightFunc(weightFunc);
+    const wf = resolveWeightFunc(weightFunc, size);
     if (!wf) return shuffle(pool).slice(0, size);
     return randomPlayersWeighted(pool, size, wf);
 }
@@ -615,8 +755,8 @@ export function applyGroupRelationship(gameState: GameState, houseguests: Houseg
     }
 }
 
-export function applyHouseRelationship(gameState: GameState, hero: Houseguest, amount: number): void {
-    const house = nonEvictedHouseguestsSplit(currentSplitIndex, gameState);
+export function applyHouseRelationship(splitIndex: number | null | undefined, gameState: GameState, hero: Houseguest, amount: number): void {
+    const house = nonEvictedHouseguestsSplit(splitIndex, gameState);
     for (const villain of house) if (villain.id !== hero.id) applyRelationship(gameState, hero, villain, amount);
 }
 
@@ -630,25 +770,7 @@ export function applyEventPopularity(hero: Houseguest, amount: number) {
     updateEventPopularity(hero, amount > 0 ? amount + 3 : amount - 3);
 }
 
-function updateEventPopularity(hero: Houseguest, amount: number) {
-    let adjusted = amount;
-    if (amount < 0) {
-        const temperMod = 1 + (5 - hero.stats.temper) * 0.05;
-        adjusted = amount * temperMod;
-    }
-    const pop = hero.popularity;
-    pop.popularity = Math.max(0, Math.min(100, pop.popularity + adjusted));
-}
-
-export function applyPopularityDecay(hero: Houseguest) {
-    const cls = getArchetypeClass(hero.archetype);
-    const rate = (cls && CLASS_POP_DRIFT[cls]) ?? POP_DRIFT_DEFAULT;
-    const target = 50 + ((cls && CLASS_POP_SKEW[cls]) || 0) + (fameOf(hero)?.skew ?? 0);
-    const pop = hero.popularity;
-    pop.popularity = Math.max(0, Math.min(100, pop.popularity + (target - pop.popularity) * rate));
-}
-
-const CLASS_EVENT_WEIGHTS = {
+const ARCHETYPE_CLASS_EVENT_WEIGHTS = {
     "Comp Beasts": { spotlight: 1.15, rivalry: 1.1, exercise: 1.20 },
     "Strategists": { sabotage: 1.15, rivalry: 0.85 },
     "Social Butterflies": { bonding: 1.3 },
@@ -663,3 +785,49 @@ const CLASS_EVENT_WEIGHTS = {
     "Outcasts": { rivalry: 1.25, bonding: 0.75, spotlight: 0.85, romance: 0.75, drama: 1.2 },
     "Confessionalists": { spotlight: 1.15, drama: 1.15 },
 };
+
+const ARCHETYPE_EVENT_WEIGHTS = {
+    "Activist": { spotlight: 2, drama: 1.75, rivalry: 1.5, communal: 1.25, bonding: 0.75, exercise: 0.5, showmance: 0.25, romance: 0.25 },
+    "Attorney": { spotlight: 1.2, rivalry: 1.4, drama: 1.5, sabotage: 1.3, communal: 0.9, exercise: 0.8, romance: 0.6, showmance: 0.4 },
+    "Bookworm": { exercise: 1.5, sabotage: 1.4, rivalry: 1.2, drama: 0.8, bonding: 0.7, communal: 0.5, romance: 0.4, spotlight: 0.3, showmance: 0.1 },
+    "Charmer": { showmance: 2, romance: 1.8, bonding: 1.6, communal: 1.4, spotlight: 1.3, rivalry: 0.8, sabotage: 0.5, exercise: 0.4 },
+    "Con Artist": { sabotage: 1.75, drama: 1.5, rivalry: 1.4, communal: 1.15, romance: 0.9, showmance: 0.8, spotlight: 0.55, exercise: 0.45 },
+    "Crybaby": { drama: 2, spotlight: 1.8, bonding: 1.5, romance: 1.2, showmance: 1.2, exercise: 0.4, sabotage: 0.1 },
+    "Den Father": { bonding: 2, communal: 1.8, exercise: 1.5, rivalry: 1.4, spotlight: 1.2, romance: 0.5, showmance: 0.3, sabotage: 0.2 },
+    "Enigma": { sabotage: 2, drama: 1.8, rivalry: 1.5, spotlight: 1.2, showmance: 0.5, romance: 0.5, exercise: 0.5, communal: 0.2, bonding: 0 },
+    "Farmhand": { exercise: 1.5, bonding: 1.3, communal: 1.2, romance: 1.1, showmance: 0.9, spotlight: 0.7, rivalry: 0.6, drama: 0.5, sabotage: 0.3 },
+    "Girl Next Door": { communal: 2, bonding: 2, romance: 1.8, showmance: 1.5, exercise: 1.2, drama: 0.4, rivalry: 0.2, sabotage: 0 },
+    "Hero": { spotlight: 2, exercise: 1.5, drama: 0.5, sabotage: 0.2, bonding: 1.3, communal: 1.5 },
+    "Hot Mess": { bonding: 1.8, drama: 1.5, communal: 1.4, showmance: 1.2, exercise: 0.5, rivalry: 0.4, sabotage: 0.3, spotlight: 0.2 },
+    "Ingenue": { bonding: 2, communal: 1.5, rivalry: 1.4, sabotage: 1.2, showmance: 0.8, spotlight: 0.8, exercise: 0.5, drama: 0.4 },
+    "Iron Fist": { sabotage: 2, drama: 2, rivalry: 2, communal: 1.5, spotlight: 1.5, bonding: 0.5, romance: 0.2, showmance: 0.2 },
+    "Karen": { drama: 2, rivalry: 1.9, sabotage: 1.5, spotlight: 1.4, exercise: 0.8, bonding: 0.5, romance: 0.2, showmance: 0.1 },
+    "Logician": { sabotage: 2, drama: 2, rivalry: 1.5, communal: 0.5, bonding: 0.2 },
+    "Lone Wolf": { showmance: 2, romance: 1.8, exercise: 1.6, sabotage: 1.5, rivalry: 1.2, bonding: 0.4, communal: 0.3 },
+    "Nerd": { sabotage: 2, spotlight: 1.5, rivalry: 1.5, drama: 1.5, bonding: 0.5, romance: 0.2, showmance: 0.1, exercise: 0 },
+    "Paranoid": { sabotage: 2, rivalry: 1.9, drama: 1.8, spotlight: 1.5, exercise: 1.2, communal: 0.5, bonding: 0.4, showmance: 0.3, romance: 0.2 },
+    "Romantic": { romance: 2, showmance: 2, bonding: 1.5, drama: 1.5, rivalry: 0.8, exercise: 0.5, sabotage: 0.2 },
+    "Rookie": { communal: 2, bonding: 2, romance: 1.5, showmance: 1.5, drama: 1.2, rivalry: 0.5, sabotage: 0.2 },
+    "Showman": { spotlight: 2, showmance: 2, drama: 1.8, rivalry: 1.6, romance: 1.5, sabotage: 0.8, bonding: 0.5, exercise: 0.4 },
+    "Snob": { spotlight: 2, drama: 1.8, rivalry: 1.7, sabotage: 1.4, exercise: 1.2, romance: 0.5, bonding: 0.4, showmance: 0.3, communal: 0.2 },
+    "Sunshine": { bonding: 2, communal: 1.8, spotlight: 1.5, showmance: 1.4, exercise: 1.3, romance: 1.2, rivalry: 0.5, drama: 0.4, sabotage: 0.1 },
+    "Sweetheart": { communal: 2, bonding: 2, showmance: 1.8, romance: 1.6, exercise: 0.8, drama: 0.3, rivalry: 0.2, sabotage: 0 },
+    "Tank": { exercise: 2, rivalry: 1.5, bonding: 1.3, communal: 1.2, spotlight: 1.1, sabotage: 0.7, showmance: 0.6, romance: 0.5 },
+    "Tomboy": { exercise: 1.8, bonding: 1.4, rivalry: 1.4, communal: 1.1, spotlight: 0.9, drama: 0.6, romance: 0.5, showmance: 0.4, sabotage: 0.3 },
+    "Wannabe Villain": { drama: 2, sabotage: 1.8, spotlight: 1.7, rivalry: 1.6, showmance: 1.5, romance: 0.8, exercise: 0.7, communal: 0.4, bonding: 0.2 },
+};
+
+const GROUP_SIZE_EVENT_WEIGHTS = {
+    "Lone Wolf": { 1: 0.45, 2: 0.4, 3: 0.1, 4: 0.04, 5: 0.01 },
+    "Strategists": { 1: 1.15, 2: 1.25, 3: 1.00, 4: 0.85, 5: 0.75 },
+    "Outcasts": { 1: 1.25, 2: 1.10, 3: 0.85, 4: 0.75, 5: 0.75 },
+    "Villains": { 1: 0.85, 2: 1.00, 3: 1.20, 4: 1.25, 5: 0.75 },
+    "Social Butterflies": { 1: 0.75, 2: 0.90, 3: 1.05, 4: 1.15, 5: 1.25 },
+    "Comp Beasts": { 1: 0.80, 2: 1.20, 3: 1.25, 4: 1.15, 5: 0.90 },
+    "Jesters": { 1: 0.75, 2: 0.85, 3: 1.05, 4: 1.15, 5: 1.25 },
+    "Homemakers": { 1: 0.90, 2: 1.00, 3: 1.10, 4: 1.25, 5: 1.20 },
+    "Superfans": { 1: 1.25, 2: 1.20, 3: 0.95, 4: 0.80, 5: 0.75 },
+    "Production Pets": { 1: 1.25, 2: 0.75, 3: 0.90, 4: 1.10, 5: 1.20 },
+    "Underdogs": { 1: 1.25, 2: 1.10, 3: 0.85, 4: 0.75, 5: 1.20 },
+    "Showmances": { 1: 0.75, 2: 1.25, 3: 0.85, 4: 0.75, 5: 0.75 }
+}

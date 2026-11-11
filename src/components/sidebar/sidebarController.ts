@@ -28,6 +28,7 @@ const RIGHT = 39;
 
 export class SidebarController {
     private view: Sidebar;
+    private _isProcessing: boolean = false;
     private subscriptions: Subscription[] = [];
     private season: Season = new Season();
     private scenes: IndexedScene[] = [];
@@ -72,13 +73,15 @@ export class SidebarController {
         this.selectedEpisode = this.scenes[id].index;
         await this.view.setState({ selectedScene: id });
         if (getSelectedPlayer() !== null) {
+            const gameState = this.scenes[this.view.state.selectedScene].scene.gameState;
             selectedPlayer$.next(
-                getHouseguestById(this.scenes[this.view.state.selectedScene].scene.gameState, getSelectedPlayer()!.id)
+                getHouseguestById(gameState, getSelectedPlayer()!.id)
             );
         }
     }
 
-    private switchSceneRelative = (delta: number) => {
+    private switchSceneRelative = async (delta: number) => {
+        if (this._isProcessing) return;
         const selectedScene = this.view.state.selectedScene;
         const renderedScenes = this.scenes.length;
         const targetScene = selectedScene + delta;
@@ -91,12 +94,23 @@ export class SidebarController {
             this.switchToScene(targetScene);
         } else if (targetScene === renderedScenes) {
             // Generate a new scene, then jump to it
+            this._isProcessing = true;
             const currentGameState = lastEpisode.gameState;
             const newPlayerCount = nonEvictedHouseguests(lastEpisode.gameState).length;
             if (newPlayerCount > 0) {
-                if (currentGameState.log[currentGameState.episode]) computeEpisodeRating(currentGameState);
-                newEpisode(this.season.renderEpisode(currentGameState));
-                this.switchSceneRelative(1);
+                setTimeout(() => {
+                    if (currentGameState.log[currentGameState.episode]) {
+                        computeEpisodeRating(currentGameState);
+                    }
+
+                    const generatedEpisode = this.season.renderEpisode(currentGameState);
+                    newEpisode(generatedEpisode);
+
+                    this._isProcessing = false;
+                    this.switchToScene(targetScene)
+                }, 0);
+            } else {
+                this._isProcessing = false;
             }
         }
     };
@@ -106,6 +120,7 @@ export class SidebarController {
     }
 
     private _handleKeyDown(event: any) {
+        if (this._isProcessing) return;
         const state = this.view.state;
         if (
             state.episodes[this.selectedEpisode] === undefined ||

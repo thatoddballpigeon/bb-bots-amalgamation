@@ -30,6 +30,7 @@ function generateBotB(initialGamestate: GameState): Episode {
     [currentGameState, houseEventsScene] = generateHouseEventsScene(
         currentGameState,
         null,
+        [],
         hohWinners,
         [],
         { veto: false, eviction: false }

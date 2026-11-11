@@ -23,6 +23,7 @@ const TIMES_OF_DAY = ["sunrise", "morning", "afternoon", "evening", "night"] as 
 export function generateHouseEventsScene(
     initialGameState: GameState,
     splitIndex: number | null | undefined,
+    povWinners: Houseguest[],
     hohWinners: Houseguest[],
     nominees: Houseguest[],
     options: HouseEventsSceneOptions
@@ -42,7 +43,7 @@ export function generateHouseEventsScene(
             <CenteredBold style={{fontSize: "20px"}}>{time.toLocaleUpperCase()}</CenteredBold>
         );
         newGameState.timeOfDay = time;
-        const events = generateHouseEvents(newGameState, splitIndex, hohWinners, nominees, options);
+        const events = generateHouseEvents(splitIndex, newGameState, povWinners, hohWinners, nominees, options);
         for (const event of events) {
             const component = houseEventBox(event);
             if (component) houseEvents.push(component);

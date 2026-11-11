@@ -13,16 +13,18 @@ interface AllianceEventsOptions {
 }
 
 export let allianceEvents: AllianceEvent[] = [];
+let id = 0;
 
 export function generateAllianceEvents(splitIndex: number | null | undefined, gameState: GameState) {
     checkGroupAllianceFormation(splitIndex, gameState);
     checkShowmanceFormation(splitIndex, gameState);
     if (!allianceEvents?.length) return '';
-
+    let i = 0;
     const avHtml = (c: Houseguest, opts: AllianceEventsOptions) => {
+        i++;
         const opacity = opts.dim ? 0.35 : 1;
         const border = opts.initiator ? '2px solid #a78bfa' : opts.campaigner ? '2px solid #4ade80' : opts.dim ? '2px solid rgba(255,61,107,0.15)' : '2px solid rgba(255,61,107,0.4)';
-        return <div 
+        return <div key={`alliance-event-${id}`}
                 style={{
                     width: '28px',
                     height: '28px',
@@ -50,7 +52,8 @@ export function generateAllianceEvents(splitIndex: number | null | undefined, ga
                     style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover'
+                        objectFit: 'cover',
+                        objectPosition: "top"
                     }} 
                     alt={c.preferredName ? c.preferredName() : ''}
                 />
@@ -260,8 +263,9 @@ export function generateAllianceEvents(splitIndex: number | null | undefined, ga
             </div>
         ) : null;
 
+        id++;
         return (
-            <div style={{ marginBottom: '8px' }}>
+            <div key={`all-alliances-${id}`} style={{ marginBottom: '8px' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: nameColor, fontFamily: "'Inter', sans-serif", marginBottom: '4px', paddingLeft: '2px' }}>
                     {al.name}
                 </div>

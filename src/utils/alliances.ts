@@ -213,6 +213,7 @@ export function showmanceAttractionMatches(hero: Houseguest, villain: Houseguest
     if (!hero || !villain || hero.id === villain.id) return false;
     if (hero.disableShowmances || villain.disableShowmances) return false;
     if (hero.age < 13 || villain.age < 13) return false;
+    if (Math.random() < -2 + (Math.abs(hero.age - villain.age) / 5)) return false;
     const heroAttracted = hero.attractedTo || defaultGenderAttraction(hero.gender);
     const villainAttracted = villain.attractedTo || defaultGenderAttraction(villain.gender);
     return heroAttracted.includes(villain.gender) && villainAttracted.includes(hero.gender);
@@ -244,23 +245,19 @@ function formShowmance(gameState: GameState, a: Houseguest, b: Houseguest): Alli
     };
     alliance.strength = getAllianceStrength(gameState, alliance);
     [[a, b], [b, a]].forEach(([from, to]) => {
-        if (!gameState.relationships.has(from.id)) {
-            gameState.relationships.set(from.id, new Map());
-        }
-        const target = gameState.relationships.get(from.id)!;
-        let existing = target.get(to.id);
+        gameState.relationships[from.id] ??= {};
+        
+        gameState.relationships[from.id][to.id] ??= {
+            strength: 0,
+            momentum: 0,
+            baseAffinity: 0,
+            romanceAffinity: 0,
+            romance: 0,
+            locked: false
+        };
 
-        if (!existing) {
-            existing = {
-                strength: 0,
-                momentum: 0,
-                baseAffinity: 0,
-                romanceAffinity: 0,
-                romance: 0,
-                locked: false
-            };
-            target.set(to.id, existing);
-        }
+        const existing = gameState.relationships[from.id][to.id];
+
         if ((existing.romance ?? 0) < 50) existing.romance = 50;
         if ((existing.strength ?? 0) < 50) existing.strength = 50;
     });
@@ -382,10 +379,10 @@ export function checkGroupAllianceFormation(splitIndex: number | null | undefine
             members: group.map(c => c.id),
             declined: [],
             type: 'group',
-            weekFormed: gameState.episode,
+            episodeFormed: gameState.episode,
             isActive: true,
             isShowmance: false,
-            weekDissolved: null,
+            episodeDissolved: null,
             dissolutionReason: null,
             strength: 0,
             stats: { hohWins: 0, povWins: 0, nominated: 0 },

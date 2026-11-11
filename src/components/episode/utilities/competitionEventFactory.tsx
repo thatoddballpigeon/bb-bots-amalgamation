@@ -485,12 +485,13 @@ export function defaultFormat(
 
     let activeResults: CompetitionResult[] | CompetitionResult[][];
     if (isGroup) {
-        const results = generateCompetitionScores2D(competitors as Houseguest[][], minigame);
-        const rowSumMap = new Map(results.map(row => [row, row.reduce((sum, item) => sum + item.score, 0)]));
+        const rawResults = generateCompetitionScores2D(competitors as Houseguest[][], minigame);
+        const results = rawResults.map(row => applyCompetitorBuffs(row, minigame));
+        const rowSumMap = new Map(results.map(row => [row, row.reduce((sum, item) => sum + item.score, 0) / row.length]));
         results.sort((rowA, rowB) => {
-            const sumA = rowSumMap.get(applyCompetitorBuffs(rowA, minigame))!;
-            const sumB = rowSumMap.get(applyCompetitorBuffs(rowB, minigame))!;
-            return sumA - sumB;
+            const sumA = rowSumMap.get(rowA)!;
+            const sumB = rowSumMap.get(rowB)!;
+            return isSpeed ? sumB - sumA : sumA - sumB;
         });
         activeResults = results;
     } else {
@@ -511,7 +512,7 @@ export function defaultFormat(
             : [current.competitor];
 
         const totalScore = isArray
-            ? current.reduce((acc, val) => acc + val.score, 0) / current.length
+            ? current.reduce((acc, result) => acc + result.score, 0)
             : current.score;
 
         const names = listNames(houseguests.map(hg => hgPreferredName(hg)));

@@ -12,7 +12,7 @@ export const CCSecretTwin = React.memo(
         handlers,
         twinOptions
     }: CharacterCardProps): JSX.Element {
-        const { isTwin, isPrimaryTwin, twinPartner, twinEntryEpisode: twinEntryWeek } = player.secretTwin;
+        const { isTwin, isPrimaryTwin, twinPartner, twinEntryEpisode } = player.secretTwin;
         const id = index - 1;
         const csId = player.castingScreenId ?? -1;
 
@@ -50,7 +50,7 @@ export const CCSecretTwin = React.memo(
                         >
                             <option value="-1">Surprise (random)</option>
                             {twins.map(p => {
-                                if (p.id === csId) return null;
+                                if (p.id === id) return null;
                                 return <option key={p.id} value={p.id}>{p.name}</option>;
                             })}
                         </select>
@@ -66,7 +66,7 @@ export const CCSecretTwin = React.memo(
                             min="1"
                             onClick={handleStopPropagation}
                             onChange={onNumberChange}
-                            value={twinEntryWeek || 1}
+                            value={twinEntryEpisode || 1}
                         />
                     </div>
                 </div>

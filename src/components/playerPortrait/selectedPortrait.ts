@@ -1,5 +1,5 @@
 import { Houseguest } from "../../model";
-import { RelationshipMap, Relationships } from "../../utils";
+import { Relationships } from "../../utils";
 import {
     displayMode$,
     getSelectedCastPlayers,
@@ -14,7 +14,6 @@ export interface SelectedPlayerData {
     id: number;
     name: string[];
     housePopularity: number;
-    relationships: { [id: number]: Relationships };
     isEvicted: boolean;
     superiors?: { [id: number]: number };
 }

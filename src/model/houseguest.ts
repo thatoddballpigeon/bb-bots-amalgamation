@@ -1,5 +1,4 @@
 import { PlayerProfile } from "./playerProfile";
-import { RelationshipMap } from "../utils";
 import { Tribe } from "./tribe";
 import { HitListEntry } from "../utils/ai/hitList";
 import { listFullName } from "../utils/listStrings";
@@ -7,12 +6,12 @@ import { GameState } from "./gameState";
 
 interface HouseguestInit extends PlayerProfile {
     id: number;
-    relationships: RelationshipMap;
 }
 
 interface HohOptions {
     isHoH: boolean;
     hohWins: number;
+    nominated: Houseguest[];
 }
 interface PovOptions {
     hasVeto: boolean;
@@ -25,7 +24,7 @@ interface PlayerBuffs {
 }
 
 export class Houseguest extends PlayerProfile {
-    public hoh: HohOptions = { isHoH: false, hohWins: 0 };
+    public hoh: HohOptions = { isHoH: false, hohWins: 0, nominated: [] };
     public pov: PovOptions = { hasVeto: false, povWins: 0, saved: [], replacements: [] };
     public buffs: PlayerBuffs = {};
 
@@ -49,10 +48,8 @@ export class Houseguest extends PlayerProfile {
     public housePopularity: number = 0;
     public deltaPopularity: number = 0;
     public previousPopularity: number = 0;
-    readonly relationships: RelationshipMap = {};
 
     public interactedWith: Set<number> = new Set<number>();
-    public hitList: HitListEntry[] = [];
 
     // Power rankings range from 0 to 1
     public powerRanking: number = 0;
@@ -72,8 +69,8 @@ export class Houseguest extends PlayerProfile {
         }
     }
 
-    public relationshipWith(gameState: GameState, villain: Houseguest): number { return gameState.relationships.get(this.id)?.get(villain.id)?.strength ?? 0; }
-    public romanceWith(gameState: GameState, villain: Houseguest): number { return gameState.relationships.get(this.id)?.get(villain.id)?.romance ?? 0; }
+    public relationshipWith(gameState: GameState, villain: Houseguest): number { return gameState.relationships[this.id]?.[villain.id]?.strength ?? 0; }
+    public romanceWith(gameState: GameState, villain: Houseguest): number { return gameState.relationships[this.id]?.[villain.id]?.romance ?? 0; }
     
     public friends = 0;
     public enemies = 0;

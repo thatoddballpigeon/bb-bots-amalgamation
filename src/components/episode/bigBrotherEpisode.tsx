@@ -113,6 +113,7 @@ export function generateBBVanillaScenes(
         [currentGameState, houseEventsScene] = generateHouseEventsScene(
             currentGameState, 
             splitIndex,
+            [],
             hohWinners,
             nominees,
             {}
@@ -165,6 +166,7 @@ export function generateVetoScenesOnwards(
     let povPlayers: Houseguest[] | undefined = [];
     let povWinners: Houseguest[] | undefined = [];
     // force no veto if 3 or less houseguests are participating in the episode
+    console.time("Veto")
     if (!lessThan3Hgs) {
         if (veto) {
             let vetoPickingsScene;
@@ -196,6 +198,7 @@ export function generateVetoScenesOnwards(
                 [currentGameState, houseEventsScene] = generateHouseEventsScene(
                     currentGameState,
                     splitIndex,
+                    povWinners,
                     hohWinners,
                     nominees,
                     { veto: true, eviction: false }
@@ -221,6 +224,7 @@ export function generateVetoScenesOnwards(
             [currentGameState, houseEventsScene] = generateHouseEventsScene(
                 currentGameState,
                 splitIndex,
+                [],
                 hohWinners,
                 nominees,
                 { veto: false, eviction: true }
@@ -228,7 +232,8 @@ export function generateVetoScenesOnwards(
             scenes.push(houseEventsScene);
         }
     }
-    
+    console.timeEnd("Veto")
+    console.time("Evicting?")
     let evictionScene;
     [currentGameState, evictionScene] = generateEvictionScene(currentGameState, hohWinners, nominees, {
         evictionTitle: doubleEviction && options.thirdNominee ? "Triple Eviction" : undefined,
@@ -239,6 +244,7 @@ export function generateVetoScenesOnwards(
         tieBreaker: options.tieBreaker && options.tieBreaker(povWinners[0]),
     });
     scenes.push(evictionScene);
+    console.timeEnd("Evicting?")
 
     let twinTwistScene = generateTwinTwist(currentGameState);
     if (twinTwistScene) scenes.push(twinTwistScene);
@@ -248,7 +254,7 @@ export function generateVetoScenesOnwards(
 export function generateTwinTwist(gameState: GameState): Scene | null {
     const pendingTwins = nonEvictedHouseguests(gameState).filter(c => {
         const secretTwin = c.secretTwin;
-        return secretTwin.isTwin && !secretTwin.isPrimaryTwin && c.isHidden &&
+        return secretTwin.isTwin && !secretTwin.isPrimaryTwin && !secretTwin.twinEntryCancelled && c.isHidden &&
         secretTwin.twinEntryEpisode === gameState.episode;
     });
     let scene: Scene | null = null;

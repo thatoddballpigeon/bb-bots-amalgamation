@@ -1,5 +1,6 @@
 import { CharacterSheetData } from "../components/castingScreen/castingScreen";
-import { GameState, nonEvictedHouseguests, PlayerProfile } from "../model";
+import { getArchetypeClass } from "../components/playerPortrait/archetypes";
+import { GameState, Houseguest, nonEvictedHouseguests, PlayerProfile } from "../model";
 
 export let popSnapshot: { [id: string]: Popularity } = {};
 
@@ -103,6 +104,24 @@ export function toggleFame(player: PlayerProfile, checked: boolean): PlayerProfi
         ...player,
         popularity: updatedPopularity
     };
+}
+
+export function updateEventPopularity(hero: Houseguest, amount: number) {
+    let adjusted = amount;
+    if (amount < 0) {
+        const temperMod = 1 + (5 - hero.stats.temper) * 0.05;
+        adjusted = amount * temperMod;
+    }
+    const pop = hero.popularity;
+    pop.popularity = Math.max(0, Math.min(100, pop.popularity + adjusted));
+}
+
+export function applyPopularityDecay(hero: Houseguest) {
+    const cls = getArchetypeClass(hero.archetype);
+    const rate = (cls && CLASS_POP_DRIFT[cls]) ?? POP_DRIFT_DEFAULT;
+    const target = 50 + ((cls && CLASS_POP_SKEW[cls]) || 0) + (fameOf(hero)?.skew ?? 0);
+    const pop = hero.popularity;
+    pop.popularity = Math.max(0, Math.min(100, pop.popularity + (target - pop.popularity) * rate));
 }
 
 export function takePopularitySnapshot(gameState: GameState) {

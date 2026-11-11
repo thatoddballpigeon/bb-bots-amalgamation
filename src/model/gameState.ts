@@ -1,13 +1,11 @@
 import { Houseguest } from "./houseguest";
 import { PlayerProfile } from "./playerProfile";
 import _ from "lodash";
-import { computeTraits, linear_transform, newRelationshipMap, randomInt, Relationships } from "../utils";
+import { computeTraits, linear_transform, randomInt, Relationships } from "../utils";
 import { EpisodeLog } from "./logging/episodeLog";
-import { Cliques } from "../utils/generateCliques";
 import { Split } from "../components/episode/episodes";
 import { Alliances } from "../utils/alliances";
 import { HouseguestMemory } from "./logging/episodeMemory";
-import { BehaviorSubject, Observable } from "rxjs";
 import { Convictions } from "../utils/ai/convictions";
 
 export function getHouseguestById(gameState: GameState, id: number): Houseguest {
@@ -74,20 +72,20 @@ export function calculateThreatScore(gameState: GameState, hero: Houseguest, per
     const statWeight = Math.min(0.25 + compWins * 0.18, 1.0);
     const rawStats = (hero.stats.physical + hero.stats.mental + hero.stats.endurance) * statWeight;
 
-    let threat = rawStats + compWins * 2;
+    let threat = rawStats + (compWins * 4.5);
 
     if (perceptor) {
         const traits = perceptor.traits, personality = perceptor.personality;
         const relationship = perceptor.relationshipWith(gameState, hero);
-        const clampedStrength = Math.max(-20, Math.min(70, relationship));
-        const multiplier = linear_transform(clampedStrength, -20, 70, 1.5, 0.3);
+        const clampedStrength = Math.max(-100, Math.min(100, relationship));
+        const multiplier = linear_transform(clampedStrength, -100, 100, 2, 0.2);
         threat *= multiplier;
 
-        const fearFactor = personality === "Neurotic" ? randomInt(3, 5) :
+        const fearFactor = personality === "Neurotic" ? randomInt(2, 4) :
         personality === "Weak-willed" ? 4.5 : 5;
         if (fearFactor < 5) { 
-            const fearReduction = (5 - fearFactor) * 0.12; // Up to 60% reduction for very fearful players
-            threat *= (1 - fearReduction);
+            const fearAmplifier = (5 - fearFactor) * 0.15; // Up to 60% reduction for very fearful players
+            threat *= (1 + fearAmplifier);
         }
 
         const loyalty = traits[1];
@@ -96,7 +94,7 @@ export function calculateThreatScore(gameState: GameState, hero: Houseguest, per
         }
 
         if (perceptor.archetype === "Paranoid" || -traits[6] > 0.4) {
-            threat *= 1.15;
+            threat *= 1.25;
         }
     }
 
@@ -104,7 +102,7 @@ export function calculateThreatScore(gameState: GameState, hero: Houseguest, per
     const showmance = activeShowmances.find(s => s.members.includes(hero.id));
     if (showmance) {
         const episodesSinceFormation = gameState.episode - (showmance.episodeFormed || 1);
-        const showmanceThreatBonus = episodesSinceFormation * 1.5;
+        const showmanceThreatBonus = episodesSinceFormation * 2;
         threat += showmanceThreatBonus;
     }
 
@@ -168,9 +166,8 @@ export class GameState extends _GameState {
     readonly episode: number = 0;
     readonly previousHOH: Houseguest[] = [];
     readonly log: EpisodeLog[][] = [];
-    readonly cliques: Cliques[][] = [];
     readonly alliances: Alliances[] = [];
-    readonly relationships: Map<number, Map<number, Relationships>> = new Map();
+    readonly relationships: Record<number, Record<number, Relationships>> = {};
     readonly convictions: Convictions[][] = [];
     readonly timeOfDay: string = "sunrise";
     readonly memory: HouseguestMemory = { lobbyingLog: [], whispers: [], alignmentChecks: [], allianceTargets: [], episodeRelDelta: [] };
@@ -202,7 +199,6 @@ export class GameState extends _GameState {
                     ...profile,
                     id: i,
                     traits: computeTraits(profile).map(v => Math.max(-1, Math.min(1, v + (Math.random() * 2 - 1) * 0.15))),
-                    relationships: newRelationshipMap(profiles.length, i),
                 });
                 this.nonEvictedHouseguests.add(i);
                 this.houseguestCache[i] = hg;
@@ -225,9 +221,8 @@ export class MutableGameState extends _GameState {
     public remainingPlayers: number = 0;
     public episode: number = 0;
     public previousHOH: Houseguest[] = [];
-    public cliques: Cliques[][] = [];
     public alliances: Alliances[] = [];
-    public relationships: Map<number, Map<number, Relationships>> = new Map();
+    public relationships: Record<number, Record<number, Relationships>> = {};
     public convictions: Convictions[][] = [];
     public log: EpisodeLog[][] = [];
     public memory: HouseguestMemory = { lobbyingLog: [], whispers: [], alignmentChecks: [], allianceTargets: [], episodeRelDelta: [] };

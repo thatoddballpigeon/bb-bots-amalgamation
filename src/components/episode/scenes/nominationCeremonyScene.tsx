@@ -42,7 +42,7 @@ export function generateNomCeremonyScene(
 ): [GameState, Scene, Houseguest[]] {
     const newGameState = new MutableGameState(initialGameState);
     const splitIndex = options.splitIndex;
-    const houseguests = nonEvictedHouseguestsSplit(splitIndex, newGameState).filter(hg => !hg.isHidden);
+    const houseguests = nonEvictedHouseguestsSplit(splitIndex, newGameState);
     const isCoHoH = hohWinners.length > 1;
     const maxNomineesPerHoH = isCoHoH ? 1 : options.thirdNominee ? 3 : 2;
 
@@ -60,18 +60,21 @@ export function generateNomCeremonyScene(
     });
 
     let nominees: Houseguest[] = [];
-    const excludedIds = new Set<number>(hohWinners.map(hoh => hoh.id));
-
+    const excludedIds = new Set<number>([
+        ...hohWinners.map(hoh => hoh.id),
+        ...houseguests.filter(hg => hg.isHidden).map(hg => hg.id)
+    ]);
     const currentInfo: NominationInformation[] = [];
     let i = 0;
     for (const hoh of hohWinners) {
         const scored = pickNominationTargets(splitIndex, newGameState, hoh, excludedIds, maxNomineesPerHoH);
         scored.map(s => s.contestant.id).forEach(id => excludedIds.add(id));
         for (const score of scored) {
-            const nominee = score.contestant;
+            const nominee = getHouseguestById(newGameState, score.contestant.id);
             const reason = generateNominationReason(newGameState, hoh, score.contestant, score.reason);
             nominee.nominatorId = hoh.id;
             nominee.nominatedBy.push(hoh.id);
+            hoh.hoh.nominated.push(nominee);
             nominations.push(
                 <OverlayBox className="column">
                     <Centered>{isCoHoH ? `${hoh.preferredName()} has nominated...`
@@ -80,8 +83,10 @@ export function generateNomCeremonyScene(
                 </OverlayBox>,
             );
             nomReasons.push(
-                <Portraits centered={true} houseguests={[hoh, nominee]} />,
-                <Centered>{nominee.preferredName()}, {reason.quote}</Centered>
+                <React.Fragment key={`decision-${i}`}>
+                    <Portraits centered={true} houseguests={[hoh, nominee]} />,
+                    <Centered>{nominee.preferredName()}, {reason.quote}</Centered>
+                </React.Fragment>
             );
             i++;
         }
@@ -95,7 +100,7 @@ export function generateNomCeremonyScene(
         nom.nominations++;
     });
 
-    let events = generateNominationConfessionalEvents(newGameState, houseguests, currentInfo);
+    let events = generateNominationConfessionalEvents(newGameState, houseguests.filter(hg => !hg.isHidden), currentInfo);
     let postNomEvents: JSX.Element[] = [];
     for (const event of events) {
         const component = houseEventBox(event);
@@ -103,7 +108,7 @@ export function generateNomCeremonyScene(
     }
     nomCeremonyInformation.push(...currentInfo);
 
-    newGameState.currentLog.nominationsPreVeto = sortAlphaNum(nominees.map(nom => nom.preferredName(true)));
+    newGameState.currentLog.nominationsPreVeto = nominees.map(nom => nom.id);
 
     const scene = new Scene({
         title: "Nomination Ceremony",

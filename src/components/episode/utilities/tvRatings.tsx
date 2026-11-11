@@ -164,10 +164,6 @@ function tvRatingEvictionSignals(gameState: GameState) {
             const hadNonAlliedOption = nomineeIds.some(id => id !== v.target.id && !isAllied(gameState, v.voter, getHouseguestById(gameState, id)));
             if (hadNonAlliedOption) betrayal += 0.2;
         });
-        // Vote margin: continuous, not a flat close/neutral/blowout step function -- a dead-even
-        // split is the most dramatic outcome possible, and it decays smoothly from there. An 8-3
-        // split (closeness ~0.45) already reads as fairly predictable and should dip slightly,
-        // not sit in a dead zone -- only genuine nail-biters (roughly 6-5 or closer) still bump.
         const counts = Object.values(evData.tally).sort((a, b) => b - a);
         if (counts.length) {
             const top = counts[0], second = counts[1] || 0;
@@ -190,15 +186,15 @@ function tvRatingTwistCount(gameState: GameState) {
     return 0 //HH_TWIST_RULES.filter(t => t.name !== 'Villa Veto' && t.name !== 'Sit Out' && t.has(ep)).length;
 }
 
-function tvRatingSeasonBuzz() {
+function tvRatingSeasonBuzz(gameState: GameState) {
     let buzz = 0;
     /*
     if (hhState.groupAlliancesEnabled) buzz += 0.1;
     if (hhState.showmancesEnabled) buzz += 0.1;
     if (hhState.teamsEnabled) buzz += 0.1;
     if (hhState.supermajorityAlliancesEnabled) buzz += 0.1;
-    if ((ga.castSize || 0) >= 16) buzz += 0.1;
-    */
+        */
+    if (gameState.houseguests.length >= 16) buzz += 0.1;
     return Math.min(0.5, buzz);
 }
 
@@ -239,8 +235,8 @@ export function computeEpisodeRating(gameState: GameState) {
         const returneeCount = 0 // field.filter(c => c.isReturnee).length;
         const returneeBoost = returneeCount > 0 ? Math.min(1.5, 0.3 + (returneeCount / Math.max(1, field.length)) * 0.7) : 0;
         const premiereRoll = (Math.random() - 0.5) * 3;
-        base = Math.max(0, Math.min(10, TV_RATING_BASELINE + returneeBoost + tvRatingSeasonBuzz() + premiereRoll));
-        debugPremiereRoll = premiereRoll; debugReturneeBoost = returneeBoost; debugSeasonBuzz = tvRatingSeasonBuzz();
+        base = Math.max(0, Math.min(10, TV_RATING_BASELINE + returneeBoost + tvRatingSeasonBuzz(gameState) + premiereRoll));
+        debugPremiereRoll = premiereRoll; debugReturneeBoost = returneeBoost; debugSeasonBuzz = tvRatingSeasonBuzz(gameState);
     } else {
         const trend = tvRatingSeasonTrend(gameState, episodeIdx);
         const reversionTarget = Math.max(0, Math.min(10, TV_RATING_BASELINE + trend * 4.2));
@@ -260,7 +256,7 @@ export function computeEpisodeRating(gameState: GameState) {
     // if (ep.buyback && ep._buybackComp?.winnerId != null) entranceCount++;
     if (field.some(c => {
         const secretTwin = c.secretTwin;
-        return secretTwin.isTwin && !secretTwin.isPrimaryTwin /* !secretTwin.twinEntryCancelled */ && gameState.episode === secretTwin.twinEntryEpisode;
+        return secretTwin.isTwin && !secretTwin.isPrimaryTwin && !secretTwin.twinEntryCancelled && gameState.episode === secretTwin.twinEntryEpisode;
     })) entranceCount++;
     if (field.some(c => c.intruder.isIntruder && c.intruder.introWeek === gameState.episode)) entranceCount++;
     signals.entrance = Math.min(0.6, entranceCount * 0.4);

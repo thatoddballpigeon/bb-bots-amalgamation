@@ -39,7 +39,7 @@ export class PlayerProfile {
     public attractedTo: string[] = [];
 
     public intruder: Intruder = { isIntruder: false, introWeek: 0 }
-    public secretTwin: SecretTwin = { isTwin: false, isPrimaryTwin: false, twinPartner: null, twinEntryEpisode: null };
+    public secretTwin: SecretTwin = { isTwin: false, isPrimaryTwin: false, twinPartner: null, twinEntryEpisode: null, twinEntryCancelled: false };
 
     public popularity: Popularity = { fame: null, popularity: 50, startPopularity: undefined, _popTouched: false };
     public castingScreenId?: number | undefined = 0;

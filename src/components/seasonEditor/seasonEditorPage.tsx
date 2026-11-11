@@ -119,7 +119,7 @@ export function SeasonEditorPage(): JSX.Element {
     const [jurySize, setJurySize] = useState(loadLast ? `${lastJurySize}` : `${defaultJurySize(castLength)}`);
     const validJurySize = validateJurySize(parseInt(jurySize), castLength);
     const [finalists, setFinalists] = useState(loadLast ? `${lastFinalistSize}` : `${3}`);
-    const validFinalists = parseInt(finalists) > 1 && parseInt(finalists) <= 10;
+    const validFinalists = parseInt(finalists) > 1 && parseInt(finalists) <= 10 && castLength >= parseInt(finalists);
     const [areTwistsValid, setTwistsValid] = useState(true);
     const [hohPlaysVeto, setHohPlaysVeto] = useState(lastHoHPlaysVeto);
     const [haveNotsEnabled, setHaveNotsEnabled] = useState(lastHaveNotsEnabled);
@@ -274,7 +274,9 @@ export function SeasonEditorPage(): JSX.Element {
                                     <p className="help" style={validFinalists ? {} : { color: "#fb8a8a" }}>
                                         {validFinalists
                                             ? `(Finals start at F${parseInt(finalists)})`
-                                            : `Number of finalists must be > 1 and <= 10`}
+                                            : `Number of finalists must be between 2-10.
+                                                Finalist amount also cannot exceed actual player count`
+                                        }
                                     </p>
                                 </div>
                             </div>

@@ -7,7 +7,6 @@ import { PortraitDisplayMode, popularityMode } from "../model/portraitDisplayMod
 import { EpisodeLibrary } from "../model/season";
 import { activeScreen$, Screens } from "../components/topbar/topBar";
 import { applyStartingPopularity } from "../utils/popularity";
-import { CharacterSheetData } from "../components/castingScreen/castingScreen";
 
 // What is currently being displayed.
 export const mainContentStream$ = new BehaviorSubject(<PregameScreen cast={[]} options={{}} />);

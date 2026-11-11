@@ -16,33 +16,6 @@ export enum TargetStrategy {
     Underdog,
 }
 
-// returns the id of the best target
-export function selectTargetWithLogic(options: number[], hero: Houseguest, intent: Intent): NumberWithLogic {
-    const badIntent = intent === "bad";
-    const decide = badIntent ? mostDesiredTarget : leastDesiredTarget;
-    const decision = decide(hero.hitList, new Set(options)).id;
-    const reason = generateExcuse(hero, decision, intent);
-    return { decision, reason };
-}
-
-function mostDesiredTarget(hitList: HitListEntry[], options: Set<number>): HitListEntry {
-    return hitList.filter((x) => options.has(x.id))[0];
-}
-
-function leastDesiredTarget(hitList: HitListEntry[], options: Set<number>): HitListEntry {
-    const result = hitList.filter((x) => options.has(x.id));
-    return result[result.length - 1];
-}
-// returns true if neww is less valued on the hit list than old
-export function shouldKillNew(old: number, neww: number, hero: Houseguest): boolean {
-    for (const hit of hero.hitList) {
-        if (hit.id === old) return false;
-        if (hit.id === neww) return true;
-    }
-    console.error(hero.hitList);
-    throw new Error(`isBetterTarget: hitlist of ${hero} tried to find ${old} or ${neww} but couldn't`);
-}
-
 function computeLocalPopularity(
     gameState: GameState,
     condition: (x: RelationshipType) => boolean,

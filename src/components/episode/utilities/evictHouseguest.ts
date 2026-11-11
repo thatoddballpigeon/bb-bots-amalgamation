@@ -13,8 +13,6 @@ import {
 import { average, roundTwoDigits } from "../../../utils";
 import { pHeroWinsTheFinale } from "../../../utils/ai/aiUtils";
 import { classifyRelationship, RelationshipType } from "../../../utils/ai/classifyRelationship";
-import { generateHitList } from "../../../utils/ai/hitList";
-import { generateCliques } from "../../../utils/generateCliques";
 
 export function evictHouseguest(gameState: MutableGameState, id: number): GameState {
     const evictee = getHouseguestById(gameState, id);
@@ -49,7 +47,6 @@ export function refreshHgStats(
         updatePopularity(gameState, hgs, updateDelta);
         updateFriendCounts(hgs, gameState);
     });
-    gameState.cliques = generateCliques(gameState);
 }
 
 function populateSuperiors(gameState: GameState) {
@@ -103,15 +100,5 @@ function updateFriendCounts(houseguests: Houseguest[], gameState: GameState) {
         });
         hero.friends = friends;
         hero.enemies = enemies;
-        const hitList = generateHitList(hero, gameState);
-        hero.hitList = hitList;
-        const hgSet = new Set(houseguests.map((hg) => hg.id));
-        const hitListbySplit = hero.hitList.filter((entry) => hgSet.has(entry.id));
-        const targets = [];
-        hitListbySplit[0] && targets.push(hitListbySplit[0].id);
-        hitListbySplit[1] && targets.push(hitListbySplit[1].id);
-        targets.forEach((target) => {
-            getHouseguestById(gameState, target).targetingMe++;
-        });
     });
 }

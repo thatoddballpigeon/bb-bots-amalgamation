@@ -30,10 +30,26 @@ interface ToolTipState {
 }
 
 export class Tooltip extends React.Component<TooltipProps, ToolTipState> {
+    private _isMounted = false;
+
     constructor(props: TooltipProps) {
         super(props);
         this.state = { visible: false };
     }
+
+    public componentDidMount() {
+        this._isMounted = true;
+    }
+
+    public componentWillUnmount() {
+        this._isMounted = false;
+    }
+
+    private setVisibility = (visible: boolean) => {
+        if (this._isMounted) {
+            this.setState({ visible });
+        }
+    };
 
     public render() {
         const Txt = this.props.wide ? WideText : Text;
@@ -44,8 +60,8 @@ export class Tooltip extends React.Component<TooltipProps, ToolTipState> {
                 content={<Txt>{this.props.text}</Txt>}
             >
                 <div
-                    onMouseEnter={() => this.setState({ visible: true })}
-                    onMouseLeave={() => this.setState({ visible: false })}
+                    onMouseEnter={() => this.setVisibility(true)} 
+                    onMouseLeave={() => this.setVisibility(false)}
                 >
                     {this.props.children}
                 </div>

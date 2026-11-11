@@ -12,7 +12,7 @@ import { Portraits } from "../../playerPortrait/portraits";
 import { NextEpisodeButton } from "../../nextEpisodeButton/nextEpisodeButton";
 import React from "react";
 import { Centered } from "../../layout/centered";
-import { HouseEventBox } from "../../layout/box";
+import { HouseEventBox, OverlayBox } from "../../layout/box";
 import { Veto } from "../veto/veto";
 import { HorizontalLine } from "../../layout/line";
 import { getEventBackgroundImage } from '../utilities/houseLocations';
@@ -53,19 +53,25 @@ export function generateVetoPickingsScene(
     if (hohPlaysVeto || everyoneWillPlay) HoHs.forEach(hoh => povPlayers.push({ ...hoh }));
     nominees.forEach(nom => povPlayers.push({ ...nom }));
 
-    let introText = "Everyone left in the house will compete in this challenge.";
+    let content;
     if (everyoneWillPlay) {
         while (excludeHouseguests(choices, povPlayers).length > 0) {
             povPlayers.push({ ...randomPlayer(choices, povPlayers) });
         }
+        content = (
+            <>
+                <Centered>Everyone left in the house will compete in this challenge.</Centered>
+                <OverlayBox>
+                    <Portraits centered={true} houseguests={povPlayers} />
+                </OverlayBox>
+            </>
+        );
     } else {
         const isMultiHoH = HoHs.length > 1;
         const hohLabel = isMultiHoH ? "Heads of Household" : "Head of Household";
         const hohText = hohPlaysVeto ? `${hohLabel}, the ` : "";
         const randomCount = maxVetoPlayers - (hohPlaysVeto ? HoHs.length : 0) - nominees.length;
         
-        introText = `Only ${maxVetoPlayers} people will participate in the Veto competition; the ${hohText}${nominees.length} nominees, and ${randomCount} other players selected by random draw. Will the nominees please join ${isMultiHoH ? "us" : "me"} up here?`;
-
         for (let i = 0; povPlayers.length < maxVetoPlayers; i++) {
             const chooser = secondRow[i];
             let picked: Houseguest;
@@ -93,6 +99,25 @@ export function generateVetoPickingsScene(
             );
             povPlayers.push({ ...picked });
         }
+        content = (
+            <>
+                <Centered>It's time to pick players for the Power of Veto competition.</Centered>
+                <HorizontalLine />
+                <HouseEventBox
+                    imageURL={getEventBackgroundImage("Living Room")}
+                    location="Living Room"
+                    houseguests={firstRow}
+                    text={`Only ${maxVetoPlayers} people will participate in the Veto competition;
+                        the ${hohText}${nominees.length} nominees, and ${randomCount} other players selected by random draw.
+                        Will the nominees please join ${isMultiHoH ? "us" : "me"} up here?`}
+                />
+                <Portraits
+                    centered={true}
+                    houseguests={secondRow}
+                />
+                {pickings}
+            </>
+        );
     }
 
     const thirdRow: Houseguest[] = povPlayers.slice(firstRow.length);
@@ -103,19 +128,7 @@ export function generateVetoPickingsScene(
         gameState: initialGameState,
         content: (
             <div>
-                <Centered>It's time to pick players for the Power of Veto competition.</Centered>
-                <HorizontalLine />
-                <HouseEventBox
-                    imageURL={getEventBackgroundImage("Living Room")}
-                    location="Living Room"
-                    houseguests={firstRow}
-                    text={introText}
-                />
-                <Portraits
-                    centered={true}
-                    houseguests={secondRow}
-                />
-                {pickings}
+                {content}
                 <NextEpisodeButton />
             </div>
         ),

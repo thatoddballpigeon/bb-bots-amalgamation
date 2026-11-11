@@ -23,7 +23,7 @@
 .cc-archetype-class-v { font-size:0.68rem; font-weight:600; color:#ffa0b8; line-height:1; }
 .cc-archetype-class-none { color:#6b7280; font-weight:500; font-style:italic; }
 
-.cc-traits-section { padding-bottom:10px; }
+.cc-traits-section { border-top: 1px solid white; padding-top:10px; padding-bottom:10px; }
 .cc-trait-row { display:flex; align-items:center; gap:4px; margin-bottom:3px; }
 .cc-trait-slider { flex:1; height:3px; cursor:pointer; accent-color:var(--stat-color,#ff3d6b); }
 .cc-trait-value { width:20px; text-align:right; font-size:0.68rem; font-weight:700; color:var(--hh-pink-300); font-family:'Proxima Nova Extrabold',sans-serif; flex-shrink:0; }

@@ -1,8 +1,8 @@
-import { GameState, Houseguest, MutableGameState, excludeHouseguests, getHouseguestById, hgPreferredName, nonEvictedHouseguestsSplit } from "../../../model";
+import { GameState, Houseguest, MutableGameState, getHouseguestById, nonEvictedHouseguestsSplit } from "../../../model";
 import { Scene } from "./scene";
 import _, { shuffle } from "lodash";
 import { ProfileHouseguest } from "../../memoryWall";
-import { castEvictionVote, castVoteToSave, NumberWithLogic, pickNominationTargets, voteTargetScore } from "../../../utils/ai/aiApi";
+import { pickNominationTargets, voteTargetScore } from "../../../utils/ai/aiApi";
 import { Portraits } from "../../playerPortrait/portraits";
 import { NextEpisodeButton } from "../../nextEpisodeButton/nextEpisodeButton";
 import React from "react";
@@ -107,6 +107,7 @@ export function generateEvictionScene(
     let tiebreakerTarget = null;
 
     let tieVote = false;
+    console.time("Tiebreak")
     if (!sorted.length) {
         evictionInformation.push({ nominees, votes: [], tally, evicted: null, tiebreaker: null, tiebreakerTarget: null });
     } else {
@@ -124,7 +125,6 @@ export function generateEvictionScene(
                 ? [...tiedNominees].sort((a, b) => getRelationshipStrength(newGameState, tiebreaker!, b) - getRelationshipStrength(newGameState, tiebreaker!, a))[0]
                 : pickNominationTargets(splitIndex, newGameState, tiebreaker, excludedIds, 1)[0].contestant;
             chosen = [result];
-
             newGameState.currentLog.votesInMajority = tally[result.id] + 1;
             newGameState.currentLog.votes[tiebreaker!.id] = options.tieBreaker
                 ? options.tieBreaker.voteType(result.id)
@@ -135,6 +135,7 @@ export function generateEvictionScene(
         tiebreakerTarget = chosen;
         evictionInformation.push({ nominees, votes: shuffled, tally, evicted: chosen, tiebreaker, tiebreakerTarget });
     }
+    console.timeEnd("Tiebreak")
 
     const chosenIds = new Set(chosen.map(c => c.id));
     const evictees = nominees.filter(nom => chosenIds.has(nom.id) === isEvict);
@@ -153,7 +154,7 @@ export function generateEvictionScene(
             : `Neither are the ${nominees.length} nominees.`
         : "";
 
-    const isUnanimous = sorted[0].votes > 0 && sorted[1].votes === 0;
+    const isUnanimous = sorted[0]?.votes > 0 && (sorted[1]?.votes ?? 0) === 0;
     const voteCountText = isUnanimous
         ? "By a unanimous vote..."
         : `By a vote of ${listVotes(sorted.map((sort) => `${sort.votes}`))}...`;
@@ -163,9 +164,11 @@ export function generateEvictionScene(
         ? `${getHouseguestById(newGameState, tiebreaker.id).preferredName()}, as ${compWinner}, you must cast the sole vote to ${options.votingTo.toLowerCase()}.`
         : "";
 
+    console.time("Wrapping Ups")
     hohWinners.forEach((hoh) => {
         const hg = getHouseguestById(newGameState, hoh.id);
         hg.hoh.isHoH = false;
+        hg.hoh.nominated = [];
     });
     nominees.forEach((nom) => {
         const hg = getHouseguestById(newGameState, nom.id);
@@ -180,6 +183,7 @@ export function generateEvictionScene(
         newGameState = evictHouseguest(newGameState, evictee.id);
         evictee.isJury = getHouseguestById(newGameState, evictee.id).isJury;
     });
+    console.timeEnd("Wrapping Ups")
 
     const groupedVotes = Object.values(
         votes.reduce<Record<number, VoteGroup>>((acc, current) => {

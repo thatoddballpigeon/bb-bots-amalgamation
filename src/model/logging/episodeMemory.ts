@@ -1,4 +1,7 @@
+import { Houseguest } from "../houseguest";
+
 interface Lobby {
+    target?: Houseguest;
     direction: string;
     persuaded: boolean;
 }

@@ -42,20 +42,23 @@ export function roundTwoDigits(number: number | undefined) {
 }
 
 export function intersection<T>(setA: Set<T>, setB: Set<T>): Set<T> {
-    let _intersection = new Set<T>();
-    for (let elem of setB) {
-        if (setA.has(elem)) {
-            _intersection.add(elem);
+    const result = new Set<T>();
+    const [smaller, larger] = setA.size < setB.size ? [setA, setB] : [setB, setA];
+    for (const elem of smaller) {
+        if (larger.has(elem)) {
+            result.add(elem);
         }
     }
-    return _intersection;
+    return result;
 }
 export function difference<T>(setA: Set<T>, setB: Set<T>): Set<T> {
-    let _difference = new Set<T>(setA);
-    for (let elem of setB) {
-        _difference.delete(elem);
+    const result = new Set<T>();
+    for (const elem of setA) {
+        if (!setB.has(elem)) {
+            result.add(elem);
+        }
     }
-    return _difference;
+    return result;
 }
 
 export function extremeValues(x: number | undefined): number {
@@ -109,6 +112,9 @@ export function linear_transform(
     output_start: number,
     output_end: number
 ) {
+    if (input_end === input_start) {
+        return output_start; 
+    }
     return ((x - input_start) / (input_end - input_start)) * (output_end - output_start) + output_start;
 }
 

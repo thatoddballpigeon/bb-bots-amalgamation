@@ -3,13 +3,18 @@ import { calculateThreatScore, excludeHouseguests, GameState, getHouseguestById,
 import { HouseEventsSceneOptions } from "../scenes/houseEventsScene";
 import { HouseEvent } from "./houseEvents";
 import { randomArrayIndex } from "../../../utils";
-import { HouseConfessional } from "./houseEventFactory";
 import { listNames } from "../../../utils/listStrings";
 import { VetoCeremonyInformation } from "../scenes/vetoCeremonyScene";
 import { ARCHETYPE_CONFESSIONALS } from "../../playerPortrait/archetypes";
 import { PERSONALITY_CONFESSIONALS } from "../../playerPortrait/personalities";
 import { NominationInformation } from "../scenes/nominationCeremonyScene";
 import { CONFESSIONAL_TEXTS } from "./confessionals";
+
+export interface HouseConfessional {
+    houseguests: Houseguest[];
+    type: string;
+    tags: string[];
+}
 
 export function generateNominationConfessionalEvents(gameState: GameState, houseguests: Houseguest[], nomInfo: NominationInformation[]): HouseEvent[] {
     const hohWinners = houseguests.filter(hg => hg.hoh.isHoH);
@@ -234,7 +239,7 @@ function generateGeneralConfessionals(
             ]
         },
         {
-            condition: () => biggestThreat && calculateThreatScore(gameState, biggestThreat) >= 20,
+            condition: () => biggestThreat && calculateThreatScore(gameState, biggestThreat) >= 40,
             templates: [
                 `${biggestThreat && biggestThreat.preferredName()} is out here acting like they already won this thing. Winning challenges, playing politics, being all charming - it's honestly impressive and completely annoying. Time to humble them.`,
                 `Everyone's too chicken to come for ${biggestThreat &&biggestThreat.preferredName()} because they're scared of making waves. Well guess what? I didn't come here to make friends with the competition - someone needs to take the shot.`,
@@ -247,7 +252,7 @@ function generateGeneralConfessionals(
             templates: [
                 `Being Head of Household is like being the popular kid at lunch - everyone suddenly wants to be your bestie. Too bad for them, I see right through the fake smiles and desperate pitches.`,
                 `This crown comes with a target, but it also comes with POWER. And honey, I look good in both. Time to make some nominations that'll have people shook.`,
-                `Everyone and their mother is in my DMs trying to influence my nominations. Cute effort, but I didn't win this power to do YOUR bidding - I'm playing MY game, not yours.`
+                `Everyone and their mother is trying to influence my nominations. Cute effort, but I didn't win this power to do YOUR bidding - I'm playing MY game, not yours.`
             ]
         },
         {
@@ -312,6 +317,13 @@ function generateGeneralConfessionals(
             `The competition is absolutely FIERCE, but I didn't travel all this way to be background noise. I'm adapting, evolving, and fighting for every single day.`
         ];
     }
+
+    selectedTemplates.push(...[
+        // -3
+        `I mouth off at a producer during a confessional, pause, then look directly into the camera and says it better not air. It airs. The clip is up before the episode is even over.`,
+        // -2
+        `My confessional contains a comment about someone that sounds like a compliment until you actually listen to it. Big Brother serves it exactly as delivered.`
+    ])
 
     return {
         category: "confession",
@@ -494,9 +506,9 @@ function postNominationConfessionalText(gameState: GameState, hohWinner: Housegu
         const mainAlly = allies[0];
         const secondAlly = allies[1];
         confessionalOptions.push(
-            `Thank god I have people like ${mainAlly.name} and ${secondAlly.name} in my corner. This nomination sucks, but knowing I have real allies makes all the difference in the world.`,
-            `My alliance with ${mainAlly.name} and ${secondAlly.name} is about to be put to the test. If they come through for me now, we're going to be unstoppable moving forward.`,
-            `I've invested so much in my relationships with ${mainAlly.name} and ${secondAlly.name}. Now it's time to see if that investment pays off when I need it most.`
+            `Thank god I have people like ${mainAlly.preferredName()} and ${secondAlly.preferredName()} in my corner. This nomination sucks, but knowing I have real allies makes all the difference in the world.`,
+            `My alliance with ${mainAlly.preferredName()} and ${secondAlly.preferredName()} is about to be put to the test. If they come through for me now, we're going to be unstoppable moving forward.`,
+            `I've invested so much in my relationships with ${mainAlly.preferredName()} and ${secondAlly.preferredName()}. Now it's time to see if that investment pays off when I need it most.`
         );
     }
 
@@ -556,9 +568,13 @@ function postVetoHohConfessionalText(
     if (povWinner) {
         const relationship = hohWinner.relationshipWith(gameState, povWinner);
         if (relationship >= 50) {
-            return `${povWinner.preferredName()} and I have been working together, so I respect their decision to save ${savedNominee.preferredName()}. We didn't discuss this beforehand, but I understand their move. Having to put up ${replacement.preferredName()} isn't ideal for me, but I'll work with whatever the game gives me. Good allies make independent decisions sometimes.`;
+            if (povWinner.id === savedNominee.id) {
+                return `${povWinner.preferredName()} won the Veto and rightfully took themselves off the block. While having to name ${savedNominee.preferredName()} as a replacement nominee isn't ideal for my game, I completely respect their move to secure their own safety. We didn't explicitly plan this, but a strong ally looks out for themselves first.`;
+            } else {
+                return `${povWinner.preferredName()} and I have been working together, so I respect their decision to save ${savedNominee.preferredName()}. We didn't discuss this beforehand, but I understand their move. Having to put up ${replacement.preferredName()} isn't ideal for me, but I'll work with whatever the game gives me. Good allies make independent decisions sometimes.`;
+            }       
         } else if (relationship <= -30) {
-            return `Of course ${povWinner.preferredName()} would save ${savedNominee.preferredName()} - they're probably working together. Now I have to put up ${replacement.preferredName()}, which wasn't my preferred outcome. ${povWinner.preferredName()} is playing their own game, and it's clearly not aligned with mine. I'll remember this move.`;
+            return `Of course ${povWinner.preferredName()} would save ${isSelf ? savedNominee.pronoun() : `${savedNominee.preferredName()} - they're probably working together`}. Now I have to put up ${replacement.preferredName()}, which wasn't my preferred outcome. ${povWinner.preferredName()} is playing their own game, and it's clearly not aligned with mine. I'll remember this move.`;
         }
     }
     
@@ -647,7 +663,7 @@ function strategicConfessionalText(gameState: GameState, houseguests: Houseguest
         } else {
             const relationship = hero.relationshipWith(gameState, hohWinner);
             if (relationship >= 50) {
-                return `${hohWinner.preferredName()} and I are on the same wavelength, so these nominations actually work in my favor. Getting rid of ${nominees[0]?.preferredName()} clears some dead weight while I keep my sights on the real prize - ${targets[0]?.name || threats[0]?.preferredName() || 'taking down the biggest threat in this house'}.`;
+                return `${hohWinner.preferredName()} and I are on the same wavelength, so these nominations actually work in my favor. Getting rid of ${nominees[0]?.preferredName()} clears some dead weight while I keep my sights on the real prize - ${targets[0]?.preferredName() || threats[0]?.preferredName() || 'taking down the biggest threat in this house'}.`;
             } else {
                 return `${hohWinner.preferredName()} is playing checkers while I'm playing chess. They're going after ${nominees[0]?.preferredName()} when they should be worried about ${threats[0]?.preferredName() || 'the actual threats'}. This Head of Household reign is gonna bite them in the ass later.`;
             }
@@ -655,11 +671,11 @@ function strategicConfessionalText(gameState: GameState, houseguests: Houseguest
     } else {
         // General strategic thinking
         if (targets.length > 0) {
-            return `I've been running the numbers and ${targets[0].name} is at the top of my hit list. They're accumulating way too much power and influence. ${allies.length > 0 ? `Good thing I have ${allies[0].name} in my corner - ` : ''}I'm cooking up the perfect plan to take them down.`;
+            return `I've been running the numbers and ${targets[0].preferredName()} is at the top of my hit list. They're accumulating way too much power and influence. ${allies.length > 0 ? `Good thing I have ${allies[0].preferredName()} in my corner - ` : ''}I'm cooking up the perfect plan to take them down.`;
         } else if (threats.length > 0) {
-            return `${threats[0].name} thinks they're being sneaky but I see EXACTLY what they're doing. Building power, making moves, staying under the radar - classic threat behavior. Time to blow up their game before they blow up mine.`;
+            return `${threats[0].preferredName()} thinks they're being sneaky but I see EXACTLY what they're doing. Building power, making moves, staying under the radar - classic threat behavior. Time to blow up their game before they blow up mine.`;
         } else {
-            return `Right now I'm sitting pretty in this house. ${allies.length > 0 ? `${allies[0].name} has my back, ` : ''}My threat level is manageable, and I'm building all the right relationships. Sometimes the best strategy is letting everyone else make the messy moves first.`;
+            return `Right now I'm sitting pretty in this house. ${allies.length > 0 ? `${allies[0].preferredName()} has my back, ` : ''}My threat level is manageable, and I'm building all the right relationships. Sometimes the best strategy is letting everyone else make the messy moves first.`;
         }
     }
     
@@ -802,20 +818,20 @@ function generateEntitysDevoteeResultConfessional(devotee, outcome, result) {
     if (r.evictedJurors.length) {
         const e = r.evictedJurors[0];
         mids.push(e.asHoH
-            ? `When I had the power, I used it. I sent ${e.juror.name.split(' ')[0]} home in cycle ${e.week}, because letting that game stay in the house beats me at the end.`
-            : `I cast the vote that sent ${e.juror.name.split(' ')[0]} out the door, and I would make that call again tonight.`);
+            ? `When I had the power, I used it. I sent ${e.juror.preferredName().split(' ')[0]} home in cycle ${e.week}, because letting that game stay in the house beats me at the end.`
+            : `I cast the vote that sent ${e.juror.preferredName().split(' ')[0]} out the door, and I would make that call again tonight.`);
         if (r.evictedJurors.length >= 2) mids.push(`Look around this jury. I had a hand in sending a lot of you home, and I am not going to stand here and apologize for it.`);
     }
     if (r.alliances.length) {
         const a = r.alliances[0];
         const who = _hhAllyList(a.partners);
-        if (a.name && a.ranHouse) mids.push(`${who} built ${a.name}, and for a long stretch in there that group ran the house.`);
-        else if (a.name) mids.push(`${who} built ${a.name}, and that alliance had my back when the votes got tight.`);
+        if (a.preferredName() && a.ranHouse) mids.push(`${who} built ${a.preferredName()}, and for a long stretch in there that group ran the house.`);
+        else if (a.preferredName()) mids.push(`${who} built ${a.preferredName()}, and that alliance had my back when the votes got tight.`);
         else mids.push(`${who} had each other's backs from early on, and that trust is a big part of why I am sitting here.`);
     }
     if (r.nominatedJurors.length && !r.evictedJurors.length) {
         const n = r.nominatedJurors[0];
-        mids.push(`I put ${n.juror.name.split(' ')[0]} on the block in cycle ${n.week}. It was never personal. It was the move the game asked me to make.`);
+        mids.push(`I put ${n.juror.preferredName().split(' ')[0]} on the block in cycle ${n.week}. It was never personal. It was the move the game asked me to make.`);
     }
     if (r.timesNom >= 2 && r.compWins < 4) mids.push(`Every time my name went up on that wall, I found a way to win my way to safety or talk myself off the block.`);
     if (r.duelWins >= 1) mids.push(`I went to the eviction duel and fought my way back into this game ${r.duelWins === 1 ? 'when it mattered most' : `${r.duelWins} separate times`}. That is not luck. That is refusing to go home.`);
@@ -841,7 +857,7 @@ function generateEntitysDevoteeResultConfessional(devotee, outcome, result) {
 }
 
 function hhGenJuryVoteQuote(juror, target, reason, mode) {
-    const tn  = target.name.split(' ')[0];
+    const tn  = target.preferredName().split(' ')[0];
     const dir = hhGetRelStrengthDir(juror.id, target.id);
     const fSm = hhState.seasonMemory?.contestants?.[target.id];
     const hhW = fSm?.hhWins   || 0;
@@ -938,7 +954,7 @@ function hhGenJuryQuestionResponse(finalist, questionKey, juror) {
     const hhWins    = sm?.hhWins    || 0;
     const vetoWins  = sm?.vetoWins  || 0;
     const timesNom  = sm?.timesNominated || 0;
-    const jfn = juror.name.split(' ')[0];
+    const jfn = juror.preferredName().split(' ')[0];
     const mk  = pool => pool[Math.floor(Math.random() * pool.length)];
 
     // Game history between finalist and juror

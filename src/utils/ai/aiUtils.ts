@@ -2,8 +2,6 @@ import { GameState, Houseguest } from "../../model";
 import { pbincdf } from "../poissonbinomial";
 import { pJurorVotesForHero } from "./aiApi";
 
-export const relationship = (hero: Houseguest, villain: { id: number }) => hero.relationships[villain.id];
-
 export function lowestScore<H, V>(hero: H, options: V[], callback: (hero: H, villain: V) => number) {
     let lowestIndex = 0;
     let lowestScore = Infinity;

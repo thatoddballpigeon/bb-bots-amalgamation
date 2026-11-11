@@ -1,15 +1,15 @@
 import React from "react";
 import { isSomeoneElseSelected, SelectedPlayerData, selectPlayer } from "./selectedPortrait";
-import { Intruder, isNotWellDefined, RelationshipMap, roundTwoDigits, SecretTwin } from "../../utils";
+import { Intruder, isNotWellDefined, Relationships, roundTwoDigits, SecretTwin } from "../../utils";
 import { HouseguestPortraitController } from "./houseguestPortraitController";
 import { PortraitDisplayMode } from "../../model/portraitDisplayMode";
 import styled from "styled-components";
 import { ColorTheme } from "../../theme/theme";
 import { Tribe } from "../../model/tribe";
 import { textColor } from "../../model/color";
-import { getSelectedPlayer } from "../../subjects/subjects";
+import { cast$, getCast, getSelectedPlayer } from "../../subjects/subjects";
 import { relationshipUpdate$ } from "../editRelationshipsScreen/editRelationshipScreen";
-import { StatsMap, newStatsMap } from "../../utils/statsMap";
+import { StatsMap } from "../../utils/statsMap";
 import { Popularity } from "../../utils/popularity";
 import { listFullName } from "../../utils/listStrings";
 
@@ -92,7 +92,7 @@ export interface PortraitProps {
     intruder: Intruder;
     secretTwin: SecretTwin;
     id?: number;
-    relationships?: RelationshipMap;
+    relationships?: Record<number, Relationships>;
     isEvicted?: boolean;
     isJury?: boolean;
     housePopularity?: number;
@@ -137,21 +137,35 @@ export class HouseguestPortrait extends React.Component<PortraitProps, PortraitS
     }
 
     private changeRelationship(data: SelectedPlayerData): void {
-        const name1 = data?.name;
-        const name2 = this.props.name;
+        const name1 = listFullName(data?.name);
+        const name2 = listFullName(this.props.name);
+        const strength = this.props.relationships![data.id]?.strength ?? 0;
+        const romance = this.props.relationships![data.id]?.romance ?? 0;
+
         let friendship = parseFloat(
             window.prompt(
-                `Enter friendship value: ${listFullName(name1)}'s feelings towards ${listFullName(name2)}:`,
-                `${roundTwoDigits(this.props.relationships![data!.id].friendship)}`
+                `Enter friendship value. ${name1}'s current opinion towards ${name2}:`,
+                `${strength}`
             ) || ""
         );
         if (isNaN(friendship)) return;
 
-        friendship = Math.max(-100, Math.min(100, friendship)) / 100;
+        let romantic = parseFloat(
+            window.prompt(
+                `Enter romance value. ${name1}'s current romantic feelings towards ${name2}:`,
+                `${romance}`
+            ) || ""
+        );
+        if (isNaN(romantic)) return;
+
+        let shouldLock = window.prompt(`Should these values stay the same throughout the game? (Y/N)`);
+
         relationshipUpdate$.next({
-            hero: data.id,
-            villain: this.props.id!,
-            relationship: friendship,
+            hero: this.props.id!,
+            villain: data.id!,
+            strength: friendship,
+            romance: romantic,
+            locked: shouldLock === "Y" ? true : false
         });
     }
 
@@ -182,7 +196,6 @@ export class HouseguestPortrait extends React.Component<PortraitProps, PortraitS
 
         selectPlayer({
             id,
-            relationships,
             superiors,
             name,
             isEvicted: !!isEvicted,

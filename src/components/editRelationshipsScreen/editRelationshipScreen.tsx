@@ -1,5 +1,5 @@
 import React from "react";
-import { firstImpressionsMap, GameState, PlayerProfile } from "../../model";
+import { GameState, PlayerProfile } from "../../model";
 import { MemoryWall } from "../memoryWall";
 import { HasText } from "../layout/text";
 import { CenteredBold } from "../layout/centered";
@@ -18,27 +18,28 @@ import { PregameEpisode } from "../episode/pregameEpisode";
 import { selectPlayer } from "../playerPortrait/selectedPortrait";
 import { getLastHoHPlaysVeto, getLastJurySize, getLastFinalistSize } from "../seasonEditor/seasonEditorPage";
 import { Subject, Subscription } from "rxjs";
-import { isWellDefined, Relationship } from "../../utils";
+import { firstImpressionsMap, isWellDefined, Relationships } from "../../utils";
 import { shuffle } from "lodash";
 import { textColor } from "../../model/color";
+import { listFullName } from "../../utils/listStrings";
 
 interface RelationshipScreenProps {
     profiles: PlayerProfile[];
     initialTribes?: Tribe[];
     currentTribes?: { [id: number]: Tribe };
-    relationships?: { [id: number]: { [id: number]: Relationship } }; // hero -> villain -> relationship
+    relationships?: Record<number, Record<number, Relationships>>; // hero -> villain -> relationship
 }
 
 interface RelationshipScreenState {
     cast: PlayerProfile[];
-    relationships: { [id: number]: { [id: number]: Relationship } }; // hero -> villain -> relationship
+    relationships: Record<number, Record<number, Relationships>>; // hero -> villain -> relationship
     currentTribes: { [id: number]: Tribe };
     selectedPlayer: number | undefined;
     swapButtonActive: boolean;
 }
 
 // subject for updating relationships
-export const relationshipUpdate$ = new Subject<{ hero: number; villain: number; relationship: number; romance?: boolean }>();
+export const relationshipUpdate$ = new Subject<{ hero: number; villain: number; strength: number; romance: number, locked: boolean }>();
 
 export class EditRelationshipsScreen extends React.Component<
     RelationshipScreenProps,
@@ -52,7 +53,7 @@ export class EditRelationshipsScreen extends React.Component<
             (props.initialTribes ? this.initalizeTribes(props.profiles, props.initialTribes) : {});
         this.state = {
             cast: props.profiles,
-            relationships: props.relationships || firstImpressionsMap(props.profiles.length),
+            relationships: props.relationships || firstImpressionsMap(props.profiles),
             currentTribes,
             selectedPlayer: undefined,
             swapButtonActive: false,
@@ -98,22 +99,32 @@ export class EditRelationshipsScreen extends React.Component<
             }),
             relationshipUpdate$.subscribe({
                 next: (update) => {
-                    const newState = { ...this.state };
-                    const updatedRelationships = { ...newState.relationships };
+                    const { hero, villain, strength, romance, locked } = update;
 
-                    const hero = update.hero;
-                    const villain = update.villain;
-                    const relationship = Math.max(-100, Math.min(100, update.relationship)) / 100;
-                    updatedRelationships[hero] = {
-                        ...updatedRelationships[hero],
-                        [villain]: {
-                            ...updatedRelationships[hero]?.[villain],
-                            [update.romance ? 'romance' : 'friendship']: relationship
-                        }
-                    };
+                    console.log(`STREAM RECEIVED -> Updating Hero: ${hero} | Villain: ${villain}`);
+                    const strengthValue = Math.max(-100, Math.min(100, strength));
+                    const romanceValue = Math.max(0, Math.min(100, romance));
+                    
+                    this.setState((prevState) => {
+                        const currentHeroRow = prevState.relationships[hero] || {};
+                        const currentTargetData = currentHeroRow[villain] || {};
 
-                    newState.relationships = updatedRelationships;
-                    this.setState(newState);
+                        return {
+                            ...prevState,
+                            relationships: {
+                                ...prevState.relationships,
+                                [hero]: {
+                                    ...currentHeroRow,
+                                    [villain]: {
+                                        ...currentTargetData,
+                                        strength: strengthValue,
+                                        romance: romanceValue,
+                                        locked
+                                    }
+                                }
+                            }
+                        };
+                    });
                 },
             })
         );
@@ -134,16 +145,14 @@ export class EditRelationshipsScreen extends React.Component<
         );
         const someoneSelected = isWellDefined(this.state.selectedPlayer);
 
-        const selectedName = someoneSelected ? this.state.cast[this.state.selectedPlayer!].name : ""
+        const selectedName = someoneSelected ? this.state.cast[this.state.selectedPlayer!].name : [""]
         // no one selected: Select a houseguest to edit their relationships
         // someone selected but swap button not active: Select a houseguest to edit their relationships
         // swap button active: Select a houseguest to swap with
         const helpText = someoneSelected
             ? this.state.swapButtonActive
                 ? "Select a houseguest to swap with."
-                : `Select another houseguest to edit their relationship with ${
-                      Array.isArray(selectedName) ? selectedName.join(" ") : selectedName
-                  }.`
+                : `Select another houseguest to edit their relationship with ${listFullName(selectedName)}.`
             : `Select a houseguest to edit their relationships${
                   props.initialTribes?.length ? " and change their team" : ""
               }.`;
@@ -180,7 +189,7 @@ export class EditRelationshipsScreen extends React.Component<
                     <button
                         className={`button is-warning`}
                         onClick={() => {
-                            this.setState({ relationships: firstImpressionsMap(props.profiles.length) });
+                            this.setState({ relationships: firstImpressionsMap(props.profiles) });
                             selectPlayer(null);
                         }}
                     >
@@ -223,10 +232,10 @@ export class EditRelationshipsScreen extends React.Component<
                                 currentTribes: this.state.currentTribes,
                             });
                             selectPlayer(null);
-                            // vscode says the awaits are unnessecary here,
-                            // but if you remove them then bad things happen
-                            await newEpisode(null);
-                            await newEpisode(
+                            // i removed the unncessary awaits. i think it's fine now?
+                            newEpisode(null);
+                            await Promise.resolve();
+                            newEpisode(
                                 new PregameEpisode(
                                     new GameState({
                                         players: getCast(),
@@ -249,16 +258,35 @@ export class EditRelationshipsScreen extends React.Component<
         );
     }
 }
+
 export function getProfiles(
     cast: PlayerProfile[],
-    relationships: { [id: number]: { [id: number]: Relationship } },
+    relationships: Record<number, Record<number, Relationships>>,
     currentTribes: { [id: number]: Tribe },
     editable: boolean,
     ignoreSelected: boolean
 ) {
+    const totalGuests = cast.length;
+
     const _profiles = cast.map((profile, i) => {
-        const myRelationships = Object.values(relationships[i]);
-        const housePopularity = myRelationships.reduce((a, b) => a + b.friendship, 0) / myRelationships.length;
+        const myRelationships: Relationships[] = [];
+        const heroRelationships = relationships[i];
+
+        if (heroRelationships) {
+            for (let villainId = 0; villainId < totalGuests; villainId++) {
+                if (i === villainId) continue;
+                
+                const relationship = heroRelationships[villainId];
+                if (relationship) {
+                    myRelationships.push(relationship);
+                }
+            }
+        }
+        
+        const housePopularity = myRelationships.length > 0 
+            ? myRelationships.reduce((a, b) => a + (b.strength ?? 0), 0) / myRelationships.length 
+            : 0;
+
         return {
             ...profile,
             housePopularity,
@@ -267,30 +295,54 @@ export function getProfiles(
             id: i,
         };
     });
+
     const profiles = _profiles.map((hero, i) => {
-        const myRelationships = relationships[i];
         let friends = 0;
         let enemies = 0;
-        Object.entries(myRelationships).forEach(([villain, relationship]) => {
-            const vill = parseInt(villain);
-            const type = classifyRelationship(
-                hero.housePopularity,
-                _profiles[vill].housePopularity,
-                relationship.friendship
-            );
-            if (type === RelationshipType.Friend) {
-                friends++;
-            } else if (type === RelationshipType.Enemy) {
-                enemies++;
+        
+        const myLocalRelationships: Record<number, Relationships> = {};
+        const heroRelationships = relationships[i];
+
+        if (heroRelationships) {
+            for (let villainId = 0; villainId < totalGuests; villainId++) {
+                if (i === villainId) continue;
+
+                const relationship = heroRelationships[villainId];
+                
+                if (relationship) {
+                    if (!myLocalRelationships[villainId]) {
+                        myLocalRelationships[villainId] = {};
+                    }
+                    
+                    myLocalRelationships[villainId] = relationship;
+                    
+                    const villainProfile = _profiles[villainId];
+                    if (!villainProfile) continue;
+
+                    const type = classifyRelationship(
+                        hero.housePopularity,
+                        villainProfile.housePopularity,
+                        relationship.strength ?? 0
+                    );
+
+                    if (type === RelationshipType.Friend) {
+                        friends++;
+                    } else if (type === RelationshipType.Enemy) {
+                        enemies++;
+                    }
+                }
             }
-        });
+        }
+
         return {
             ...hero,
             friends,
             enemies,
             ignoreSelected,
-            relationships: myRelationships,
+            relationships: myLocalRelationships,
         };
     });
+    
     return profiles;
 }
+

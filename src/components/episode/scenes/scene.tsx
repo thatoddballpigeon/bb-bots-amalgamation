@@ -6,13 +6,14 @@ import { randomArrayIndex } from "../../../utils";
 import { getEventBackgroundImage } from "../utilities/houseLocations";
 import { HouseEventBox } from "../../layout/box";
 import { BottomBar } from "../../bottomBar/bottomBar";
+import { HouseEvent } from "../utilities/houseEvents";
 interface InitScene {
     readonly title: string;
     readonly gameState: GameState;
     readonly content: JSX.Element;
 }
 
-export const houseEventBox = (event: any) => {
+export const houseEventBox = (event: HouseEvent) => {
     if (!event) return null;
     const { locations, category, portraits: houseguests, text } = event;
     const location = locations ? locations[randomArrayIndex(locations)] : "";

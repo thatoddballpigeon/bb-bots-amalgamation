@@ -1,4 +1,5 @@
 import { GameState, Houseguest, PlayerProfile } from "../model";
+import { cast$ } from "../subjects/subjects";
 import { areShowmanced } from "./alliances";
 
 export interface Relationship {
@@ -17,30 +18,11 @@ export interface Relationships {
     momentum?: number;
 }
 
-export type RelationshipMap = Record<number, Relationship>;
-
 const ROMANCE_TRAIT_WEIGHTS = [0.34, 0.04, 0.04, 0.08, 0.14, -0.16, 0.04, 0.34];
 const ROMANCE_TRAIT_WEIGHT_SUM = ROMANCE_TRAIT_WEIGHTS.reduce((s, w) => s + Math.abs(w), 0);
 
 const ROMANCE_RELATIONSHIP_ECHO = 0.4;
 const SHOWMANCE_RELATIONSHIP_ECHO = 0.65;
-
-export function newRelationshipMap(size: number, exclude: number): RelationshipMap {
-    const result: RelationshipMap = {};
-    for (let i = 0; i < size; i++) {
-        if (i === exclude) continue;
-        result[i] = newRelationship();
-    }
-    return result;
-}
-
-export function newRelationship(): Relationship {
-    return {
-        friendship: 0,
-        romance: 100,
-        isRelated: false
-    };
-}
 
 export function computeTraits(player: PlayerProfile) {
     const s = player.stats;
@@ -72,8 +54,24 @@ function romanceAffinityFromCompatVec(compatVec: number[]) {
     return Math.max(-1, Math.min(1, raw / ROMANCE_TRAIT_WEIGHT_SUM));
 }
 
-export function seedTraitsAndRelationships(gameState: GameState) {
-    const cs = gameState.houseguests;
+export function firstImpressions(gameState: GameState) {
+    const hgs = gameState.houseguests;
+    
+    const initialSource = cast$.value.options?.relationships || firstImpressionsMap(hgs);
+    
+    for (let i = 0; i < hgs.length; i++) {
+        for (let j = 0; j < hgs.length; j++) {
+            if (i === j) continue;
+            const relationship = initialSource[i]?.[j];
+            if (!gameState.relationships[i]) {
+                gameState.relationships[i] = {};
+            }
+            gameState.relationships[i][j] = relationship;
+        }
+    }
+}
+
+export function firstImpressionsMap(hgs: PlayerProfile[]): Record<number, Record<number, Relationships>> {
     /*
     const AMP = 0.15;
     cs.forEach(c => {
@@ -81,39 +79,57 @@ export function seedTraitsAndRelationships(gameState: GameState) {
         c.traits = base.map(v => Math.max(-1, Math.min(1, v + (Math.random() * 2 - 1) * AMP)));
     });
     */
-    cs.forEach(a => {
-        if (!gameState.relationships.has(a.id)) gameState.relationships.set(a.id, new Map());
-        cs.forEach(b => {
-            if (a.id === b.id) return;
+    const relationships: Record<number, Record<number, Relationships>> = {};
+    hgs.forEach((a, aIdx) => {
+        hgs.forEach((b, bIdx) => {
+            if (aIdx === bIdx) return;
+
             const compatVec = a.traits.map((ta, d) => ta * b.traits[d]);
             const baseAffinity = compatVec.reduce((s, v) => s + v, 0) / 8;
             const romanceAffinity = romanceAffinityFromCompatVec(compatVec);
+            if (!relationships[aIdx]) {
+                relationships[aIdx] = {};
+            }
 
-            const target = gameState.relationships.get(a.id)!;
-            const existing = target.get(b.id);
+            const existing = relationships[aIdx][bIdx];
             if (existing) {
-                target.set(b.id, { ...existing, compatVec, baseAffinity, romanceAffinity, momentum: existing.momentum ?? 0, romance: existing.romance ?? 0 });
+                relationships[aIdx][bIdx] = { 
+                    ...existing, 
+                    compatVec, 
+                    baseAffinity, 
+                    romanceAffinity, 
+                    momentum: existing.momentum ?? 0, 
+                    romance: existing.romance ?? 0 
+                };
             } else {
                 const noise = (Math.random() - 0.5) * 50;
                 const strength = Math.max(-100, Math.min(100, baseAffinity * 160 + noise));
                 const romance = Math.max(0, Math.min(100, romanceAffinity * 80 + (Math.random() - 0.5) * 40));
-                target.set(b.id, { strength, momentum: 0, compatVec, baseAffinity, romanceAffinity, romance });
+                
+                relationships[aIdx][bIdx] = { 
+                    strength, 
+                    momentum: 0, 
+                    compatVec, 
+                    baseAffinity, 
+                    romanceAffinity, 
+                    romance 
+                };
             }
         });
     });
+    return relationships;
 }
 
 export function getRelationshipStrength(gameState: GameState, a: Houseguest, b: Houseguest) {
     return (a.relationshipWith(gameState, b) + b.relationshipWith(gameState, a)) / 2;
 }
 
-export function updateRelationship(gameState: GameState, from: number, to: number, delta: number) {
-    if (!gameState.relationships.has(from)) {
-        gameState.relationships.set(from, new Map());
-    }
+export function getRomanceStrength(gameState: GameState, a: Houseguest, b: Houseguest) {
+    return (a.romanceWith(gameState, b) + b.romanceWith(gameState, a)) / 2;
+}
 
-    const target = gameState.relationships.get(from)!;
-    let existing = target.get(to);
+export function updateRelationship(gameState: GameState, from: number, to: number, delta: number) {
+    let existing = gameState.relationships[from][to];
     if (!existing) {
         existing = {
             strength: 0,
@@ -123,7 +139,7 @@ export function updateRelationship(gameState: GameState, from: number, to: numbe
             romance: 0,
             locked: false
         };
-        target.set(to, existing);
+        gameState.relationships[from][to] = existing;
     }
 
     if (existing.locked) return;
@@ -138,17 +154,12 @@ export function updateRelationship(gameState: GameState, from: number, to: numbe
     existing.momentum = Math.max(-3, Math.min(3, momentum * 0.7 + Math.sign(effective) * 0.6));
 
     const gameMemory = gameState.memory;
-    if (!gameMemory.episodeRelDelta[from]) gameMemory.episodeRelDelta[from] = [];
+    if (!gameMemory.episodeRelDelta[from]) gameMemory.episodeRelDelta[from] = {};
     gameMemory.episodeRelDelta[from][to] = (gameMemory.episodeRelDelta[from][to] || 0) + delta;
 }
 
 export function updateRomance(gameState: GameState, from: number, to: number, delta: number) {
-    if (!gameState.relationships.has(from)) {
-        gameState.relationships.set(from, new Map());
-    }
-    const target = gameState.relationships.get(from)!;
-    let existing = target.get(to);
-
+    let existing = gameState.relationships[from][to];
     if (!existing) {
         existing = {
             strength: 0,
@@ -158,7 +169,7 @@ export function updateRomance(gameState: GameState, from: number, to: number, de
             romance: 0,
             locked: false
         };
-        target.set(to, existing);
+        gameState.relationships[from][to] = existing;
     }
 
     if (existing.locked) return;

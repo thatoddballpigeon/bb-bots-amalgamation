@@ -41,6 +41,7 @@ export function Portraits(props: {
         return <div />;
     }
     props.houseguests.forEach((houseguest: ProfileHouseguest | "⬅️" | "➡️"| "⬇️" ) => {
+        if (!houseguest) return;
         let result;
         const isArrow = houseguest === "⬅️" || houseguest === "➡️" || houseguest === "⬇️"
         if (isArrow) {

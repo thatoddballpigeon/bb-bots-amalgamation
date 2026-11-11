@@ -12,6 +12,7 @@ import { HorizontalLine } from "../../layout/line";
 import { getEventBackgroundImage } from "../utilities/houseLocations";
 import { generateVetoConfessionalEvents } from "../utilities/confessionalEventFactory";
 import { vetoCeremonyInformation } from "../utilities/tvRatings";
+import { applyEventPopularity, applyRelationship } from "../utilities/houseEventFactory";
 
 interface VetoCeremonySceneOptions {
     doubleEviction?: boolean;
@@ -53,13 +54,14 @@ export function generateVetoCeremonyScene(
     });
     hohWinners.forEach((hoh) => !povWinners.some(pov => pov.id === hoh.id) && immunePlayers.push(hoh));
 
-    let finalNominees: any[] = [...initialNominees];
+    let finalNominees: Houseguest[] = [...initialNominees];
     
     const sceneContent: JSX.Element[] = [];
     const currentInfo: VetoCeremonyInformation[] = [];
     povWinners.forEach((pov, index) => {
         let decisionText = "";
-        let currentNominees = [...finalNominees];
+        let currentNominees: Houseguest[] = [...finalNominees];
+        let replacementNominees: Houseguest[] = [];
 
         const vetoChoice = veto.use(pov, finalNominees, initialGameState, HoH.id, {
             immunePlayers,
@@ -72,6 +74,7 @@ export function generateVetoCeremonyScene(
         const tousethepov = "to use the Power of Veto";
         if (!povTarget) {
             decisionText += `...not ${tousethepov}.`;
+            applyEventPopularity(pov, 1);
             currentInfo.push({ hoh: HoHnamer, pov, saved: null, replacements: null, finalNominees })
         } else if (veto === BoomerangVeto) {
             decisionText += `...${tousethepov}.`;
@@ -84,8 +87,16 @@ export function generateVetoCeremonyScene(
         let replacementReason = "";
         let nameAReplacement = "";
         if (povTarget) {
-            getHouseguestById(initialGameState, povTarget.id).isNominated = false;
-            getHouseguestById(initialGameState, povTarget.id).nominatorId = -1;
+            const target = getHouseguestById(initialGameState, povTarget.id);
+            target.isNominated = false;
+            target.nominatorId = -1;
+
+            if (pov.id !== target.id) {
+                applyRelationship(initialGameState, pov, target, 30);
+                applyRelationship(initialGameState, target, pov, 30);
+            }
+            applyEventPopularity(pov, 2);
+
             const HoHwonPoV = HoH.id === pov.id && !isCoHoH;
             const aReplacementNominee = veto === BoomerangVeto ? "replacement nominees" : "a replacement nominee";
             const oneOf = veto !== BoomerangVeto ? "one of " : "";
@@ -105,19 +116,26 @@ export function generateVetoCeremonyScene(
                 initialGameState,
                 replacementCount
             ).map((v) => {
-                return getHouseguestById(initialGameState, v.decision);
+                const hg = getHouseguestById(initialGameState, v.decision)
+                applyEventPopularity(hg, -2);
+                return hg;
             });
 
             const names = replacementNoms.map((n) => getHouseguestById(initialGameState, n.id).preferredName());
             const isAre = replacementNoms.length === 1 ? " is" : "s are"
             currentNominees = replacementNoms.length === 1
-                ? currentNominees.map(hg => hg.id === povTarget?.id
-                    ? { ...replacementNoms[0], nominations: replacementNoms[0].nominations + 1 }
-                    : hg)
-                : replacementNoms.map((nom) => ({
-                    ...nom,
-                    nominations: nom.nominations + 1
-                }));
+                ? currentNominees.map(hg => {
+                    if (hg.id === povTarget?.id) {
+                        replacementNoms[0].nominations += 1;
+                        return replacementNoms[0];
+                    }
+                    return hg;
+                })
+                : replacementNoms.map((nom) => {
+                    nom.nominations += 1;
+                    return nom;
+                });
+            replacementNominees = replacementNoms;
             replacementSpeech = `My replacement nominee${isAre} ${listNames(names)}.`;
             replacementReason = `I'm really sorry, ${listNames(names)}, but it's time to make a big move and put you on the block. I hope you leave.`;
 
@@ -156,6 +174,7 @@ export function generateVetoCeremonyScene(
                 <HouseEventBox
                     imageURL={getEventBackgroundImage("Living Room")}
                     houseguests={[...currentNominees]}
+                    text={replacementNominees.length && `${replacementNominees[0].preferredName()} gives a sigh and sits down in the replacement chair.`}
                 />
             </React.Fragment> 
         );

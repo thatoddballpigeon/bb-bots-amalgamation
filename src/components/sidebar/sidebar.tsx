@@ -55,7 +55,7 @@ export class Sidebar extends React.Component<{}, SidebarState> {
                 disableShowmances: false,
                 attractedTo: defaultGenderAttraction("Female"),
                 intruder: { isIntruder: false, introWeek: 0 },
-                secretTwin: { isTwin: false, isPrimaryTwin: false, twinPartner: null, twinEntryEpisode: null },
+                secretTwin: { isTwin: false, isPrimaryTwin: false, twinPartner: null, twinEntryEpisode: null, twinEntryCancelled: false },
                 popularity: { fame: null, popularity: 50, startPopularity: undefined, _popTouched: false },
             });
         }

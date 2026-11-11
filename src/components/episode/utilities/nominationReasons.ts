@@ -12,7 +12,10 @@ export function generateNominationReason(
     const eN = nominee.preferredName();
     const rel = getRelationshipStrength(gameState, hoh, nominee);
 
-    let timesInDanger = nominee.nominations;
+    let timesInDanger = 0;
+    gameState.log[gameState.episode].forEach(log => {
+        if (log.nominationsPreVeto && log.nominationsPreVeto.includes(nominee.id)) timesInDanger++;
+    });
 
     const pick = (arr: string[]) => arr[randomArrayIndex(arr)];
     const mk = (types: string | string[], quotes: string[]) => ({ type: pick(Array.isArray(types) ? types : [types]), quote: pick(quotes) });
@@ -119,7 +122,7 @@ export function generateNominationReason(
             `big targets do not stay this comfortable for long. Today is your turn.`,
             `I do not get a clean shot at you every week. Not going to waste this one.`,
             `you've been the scariest player in this house from day one. I am not letting them survive another week.`,
-            `you have been winning everything in sight. This house needs a course correction.`,
+            ...(nominee.hohWins + nominee.povWins > 5 ? [`you have been winning everything in sight. This house needs a course correction.`] : []),
         ];
         return mk(['Taking a Shot', 'Big Player', 'Threat'], quotes);
     }
@@ -231,7 +234,7 @@ export function generateEvictionReason(
         `"Something shifted this week and I am acting on it. ${en} is my vote."`,
     ]);
 
-    const relEntry = gameState.relationships.get(voter.id)?.get(target.id);
+    const relEntry = gameState.relationships[voter.id]?.[target.id];
     if ((relEntry?.baseAffinity ?? 0) < -0.4 && dirRel > -60) {
         return mk(["Just Don't Click", 'Wrong Energy', 'Oil and Water'], [
             `"${en} and I have never been on the same wavelength in here. This vote is honest."`,
@@ -307,7 +310,7 @@ export function generateSaveReason(
         `"Something shifted this week and I am acting on it. ${en} is who I'm keeping."`,
     ]);
 
-    const relEntry = gameState.relationships.get(voter.id)?.get(target.id);
+    const relEntry = gameState.relationships[voter.id]?.[target.id];
     if ((relEntry?.baseAffinity ?? 0) > 0.4 && dirRel < 60) {
         return mk(['Just Click', 'Right Energy', 'Natural Pick'], [
             `"${en} and I have been on the same wavelength in here since day one. This vote is honest."`,
