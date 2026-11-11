@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/bb-bots-amalgamation/static/css/main.5486bcff.css",
-    "main.js": "/bb-bots-amalgamation/static/js/main.6da4b343.js",
+    "main.css": "/bb-bots-amalgamation/static/css/main.159c4396.css",
+    "main.js": "/bb-bots-amalgamation/static/js/main.1cac5577.js",
     "static/media/livingroom.png": "/bb-bots-amalgamation/static/media/livingroom.e5cee1a1845346e89569.png",
     "static/media/bedroom.jpg": "/bb-bots-amalgamation/static/media/bedroom.5f9c2e9c691f94c6db2f.jpg",
     "static/media/kitchen.jpg": "/bb-bots-amalgamation/static/media/kitchen.dcbca77eaeba06128dcc.jpg",
@@ -13,11 +13,11 @@
     "static/media/bathroom.jpg": "/bb-bots-amalgamation/static/media/bathroom.e688d14a67633cae2e42.jpg",
     "static/media/storageroom.jpg": "/bb-bots-amalgamation/static/media/storageroom.b8c4e7cf37e425fa7345.jpg",
     "index.html": "/bb-bots-amalgamation/index.html",
-    "main.5486bcff.css.map": "/bb-bots-amalgamation/static/css/main.5486bcff.css.map",
-    "main.6da4b343.js.map": "/bb-bots-amalgamation/static/js/main.6da4b343.js.map"
+    "main.159c4396.css.map": "/bb-bots-amalgamation/static/css/main.159c4396.css.map",
+    "main.1cac5577.js.map": "/bb-bots-amalgamation/static/js/main.1cac5577.js.map"
   },
   "entrypoints": [
-    "static/css/main.5486bcff.css",
-    "static/js/main.6da4b343.js"
+    "static/css/main.159c4396.css",
+    "static/js/main.1cac5577.js"
   ]
 }
