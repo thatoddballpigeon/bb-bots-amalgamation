@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/bb-bots-amalgamation/static/css/main.159c4396.css",
-    "main.js": "/bb-bots-amalgamation/static/js/main.1cac5577.js",
+    "main.js": "/bb-bots-amalgamation/static/js/main.a407707d.js",
     "static/media/livingroom.png": "/bb-bots-amalgamation/static/media/livingroom.e5cee1a1845346e89569.png",
     "static/media/bedroom.jpg": "/bb-bots-amalgamation/static/media/bedroom.5f9c2e9c691f94c6db2f.jpg",
     "static/media/kitchen.jpg": "/bb-bots-amalgamation/static/media/kitchen.dcbca77eaeba06128dcc.jpg",
@@ -14,10 +14,10 @@
     "static/media/storageroom.jpg": "/bb-bots-amalgamation/static/media/storageroom.b8c4e7cf37e425fa7345.jpg",
     "index.html": "/bb-bots-amalgamation/index.html",
     "main.159c4396.css.map": "/bb-bots-amalgamation/static/css/main.159c4396.css.map",
-    "main.1cac5577.js.map": "/bb-bots-amalgamation/static/js/main.1cac5577.js.map"
+    "main.a407707d.js.map": "/bb-bots-amalgamation/static/js/main.a407707d.js.map"
   },
   "entrypoints": [
     "static/css/main.159c4396.css",
-    "static/js/main.1cac5577.js"
+    "static/js/main.a407707d.js"
   ]
 }
