@@ -7,6 +7,7 @@ import { NominationInformation } from "../scenes/nominationCeremonyScene";
 import { EvictionInformation } from "../scenes/evictionScene";
 import _ from "lodash";
 import { EpisodeLog } from "../../../model/logging/episodeLog";
+import { isNotNull } from "../../../utils";
 
 export let nomCeremonyInformation: NominationInformation[] = [];
 export let vetoCeremonyInformation: VetoCeremonyInformation[] = [];
@@ -54,7 +55,7 @@ function tvRatingSoftClamp(v: number) {
 }
 
 function tvRatingEvictees() {
-    return evictionInformation.flatMap(info => info.evicted);
+    return evictionInformation.flatMap(info => info.evicted).filter(isNotNull);
 }
 
 function tvRatingNomineesFor(vetoCer: VetoCeremonyInformation[], nomData: NominationInformation[]) {
@@ -114,11 +115,6 @@ function tvRatingAlliancesOppose(gameState: GameState, a: string | null, b?: str
     const bId = alliances.find(al => (al.id ?? al.name) === b);
     if (!aId || !bId) return false;
     const membersA = tvRatingAliveMemberIds(gameState, aId), membersB = new Set(tvRatingAliveMemberIds(gameState, bId));
-    // Both sides just need to be a real alliance (2+ alive, the normal minimum everywhere else in
-    // this file) -- Power Shift no longer requires a 3+-person supermajority on either side. A
-    // real control flip between two genuinely separate 2-person alliances still counts. The
-    // overlap-ratio check below is what keeps this from firing on noise (the same core group
-    // relabeled as a "different" pair week to week still reads as one bloc, not two).
     if (Math.max(membersA.length, membersB.size) < 2) return false;
     const smaller = Math.min(membersA.length, membersB.size);
     const overlap = membersA.filter(id => membersB.has(id)).length;
@@ -140,7 +136,7 @@ function tvRatingIsUnderdogAlliance(gameState: GameState, allianceId: string) {
 
 function tvRatingEvictionSignals(gameState: GameState) {
     let blindside = 0, betrayal = 0, chalk = 0, voteMargin = 0;
-    evictionInformation.filter(Boolean).forEach(evData => {
+    evictionInformation.filter(isNotNull).forEach(evData => {
         const evicted = evData.evicted;
         const votes = evData.votes;
         if (evicted && votes.length) {

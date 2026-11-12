@@ -6,6 +6,7 @@ import {
     hgPreferredName,
     Houseguest,
     MutableGameState,
+    nonEvictedHouseguestsSplit,
 } from "../../../model";
 import { Scene } from "./scene";
 import { Portraits } from "../../playerPortrait/portraits";
@@ -43,9 +44,7 @@ export function generateCompetitionScene(
     options: CompetitionSceneOptions
 ): [GameState, Scene, Houseguest[]] {
     const newGameState = new MutableGameState(initialGameState);
-    const houseguests = isNotWellDefined(options.splitIndex)
-        ? newGameState.houseguests
-        : getMembersFromSplitIndex(options.splitIndex, newGameState);
+    const houseguests = nonEvictedHouseguestsSplit(options.splitIndex, newGameState);
     const doubleEviction: boolean = options.doubleEviction || false;
 
     const coHoH = options.coHoH || false;
@@ -90,13 +89,13 @@ export function generateCompetitionScene(
         const winner = getHouseguestById(newGameState, win.id);
         if (isHoHComp) {
             if (options.skipHoHWin) return;
-            winner.hohWins++;
+            winner.hoh.hohWins++;
             if ((i === 0 && !coHoH) || coHohIsFinal) {
                 newGameState.previousHOH.push(winner);
                 newGameState.currentLog.votes[winner.id] = new HoHVote();
             }
         } else if (isVetoComp) {
-            winner.povWins++;
+            winner.pov.povWins++;
             winner.pov.hasVeto = true;
             newGameState.currentLog.vetoWinner.push(winner.preferredName(true));
             newGameState.currentLog.vetoEmoji = veto.emoji;

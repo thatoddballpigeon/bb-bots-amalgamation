@@ -84,7 +84,7 @@ export function generateNomCeremonyScene(
             );
             nomReasons.push(
                 <React.Fragment key={`decision-${i}`}>
-                    <Portraits centered={true} houseguests={[hoh, nominee]} />,
+                    <Portraits centered={true} houseguests={[hoh, nominee]} />
                     <Centered>{nominee.preferredName()}, {reason.quote}</Centered>
                 </React.Fragment>
             );

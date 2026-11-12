@@ -7,9 +7,8 @@ import { refreshHgStats } from "./utilities/evictHouseguest";
 import { cast$ } from "../../subjects/subjects";
 import { applyPopularityDecay } from "../../utils/popularity";
 
-
 export function nextEpisode(oldState: GameState, episodeType: EpisodeType): Episode {
-    console.time("⏱️ totalNextEpisode");
+    console.time("⏱️totalNextEpisode");
     let newState = new MutableGameState(oldState);
 
     if (oldState.episode === 0) {
@@ -29,10 +28,8 @@ export function nextEpisode(oldState: GameState, episodeType: EpisodeType): Epis
     !episodeType.pseudo && (newState.currentLog.weekEmoji = episodeType.emoji || "");
     
     const split: Split[] = episodeType.splitFunction ? episodeType.splitFunction(newState) : [];
-    
     newState.split = split;
     
-    console.time("👉 2. refreshHgStats & Decay");
     refreshHgStats(newState, split, true);
     const activeHouseguests = nonEvictedHouseguests(newState);
     for (let i = 0; i < activeHouseguests.length; i++) {
@@ -40,21 +37,18 @@ export function nextEpisode(oldState: GameState, episodeType: EpisodeType): Epis
         hg.previousPopularity = hg.housePopularity;
         applyPopularityDecay(hg);
     }
-    console.timeEnd("👉 2. refreshHgStats & Decay");
     
-    console.time("👉 3. State Cloning");
     const finalState = new GameState(newState);
-    console.timeEnd("👉 3. State Cloning");
 
     if (!episodeType.canPlayWith(finalState.remainingPlayers, finalState.finalFinalistsSize()))
         throw new Error(
             `Episode type ${episodeType.name} not playable with ${finalState.remainingPlayers} players`
         );
         
-    console.time("💥 4. episodeType.generate");
+    console.time("💥episodeType.generate");
     const result = episodeType.generate(finalState);
-    console.timeEnd("💥 4. episodeType.generate");
+    console.timeEnd("💥episodeType.generate");
     
-    console.timeEnd("⏱️ totalNextEpisode");
+    console.timeEnd("⏱️totalNextEpisode");
     return result;
 }

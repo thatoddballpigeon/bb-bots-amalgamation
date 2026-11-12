@@ -35,7 +35,7 @@ export function CastingScreenLink(): JSX.Element {
         <LinkStyle
             onClick={() => {
                 pushToMainContentStream(
-                    <CastingScreen cast={JSON.parse(JSON.stringify(getCast()))} />,
+                    <CastingScreen cast={getCast()} />,
                     Screens.Casting
                 );
             }}

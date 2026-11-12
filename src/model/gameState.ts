@@ -68,11 +68,11 @@ export function calculatePopularity(gameState: GameState, hero: Houseguest, hous
 }
 
 export function calculateThreatScore(gameState: GameState, hero: Houseguest, perceptor?: Houseguest) {
-    const compWins = hero.hohWins + hero.povWins;
+    const compWins = hero.hoh.hohWins + hero.pov.povWins;
     const statWeight = Math.min(0.25 + compWins * 0.18, 1.0);
     const rawStats = (hero.stats.physical + hero.stats.mental + hero.stats.endurance) * statWeight;
 
-    let threat = rawStats + (compWins * 4.5);
+    let threat = rawStats + (compWins * 2);
 
     if (perceptor) {
         const traits = perceptor.traits, personality = perceptor.personality;

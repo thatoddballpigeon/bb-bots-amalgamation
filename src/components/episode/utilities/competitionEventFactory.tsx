@@ -424,7 +424,7 @@ export function stayOrFoldFormat(
             }
             !condensedFormat && gameplayEvents.push(
                 <HouseEventBox
-                    houseguests={[result.competitor]}
+                    houseguests={result.competitor}
                     text={text}
                 />
             );
@@ -523,7 +523,7 @@ export function defaultFormat(
         return (
             <HouseEventBox
                 key={`competition-losers-${i}`}
-                houseguests={[...houseguests]}
+                houseguests={houseguests}
                 category={ordinal}
                 location={formatResult(totalScore, minigame)}
                 text={text}
@@ -549,7 +549,7 @@ export function defaultFormat(
     gameplayEvents.push(
         <HouseEventBox
             key="competition-winners"
-            houseguests={[...winners]}
+            houseguests={winners}
             text={isSpeed ? `${names} ${hasHave} the fastest time!` : `${names} ${isAre} the last one${oneS} standing!`}
         />
     );

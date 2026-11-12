@@ -583,20 +583,115 @@ export const HOUSE_EVENTS: HouseEventConfig[] = [
         category: "confessional", type: "positive", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState, 1, c => c.stats.charisma >= 7); if (!a) return null; applyEventPopularity(a, 4);
         return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{boldText(a.preferredName())} sits down for a producer interview and tells a story they have never told publicly. The kind that gets screenshotted and shared in silence. Fanbase goes up overnight.</> }; },
     },
+    {
+        category: "confessional", type: "positive", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState); if (!a) return null; applyEventPopularity(a, 4);
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{boldText(a.preferredName())} did something genuinely decent this week that nobody expected and the house doesn't know how to process it. The confessional makes clear they have been misjudged. Viewers start defending them online.</> }; },
+    },
+    // archetype-exclusive
+    // crybaby
+    {
+        category: "confessional", type: "neutral", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState, 1, c => c.archetype === "Crybaby"); if (!a) return null; applyEventPopularity(a, 4);
+        const templates = [
+            `"I know I cry a lot but this game is just SO overwhelming! The pressure, the paranoia, the constant stress - it's all too much sometimes."`,
+            `"Everyone probably thinks I'm weak because I get emotional, but these tears are REAL. I can't help that I feel everything so deeply."`,
+            `"I've cried like three times today already and it's not even the elimination yet. I'm just so scared and stressed and I miss home."`
+        ];
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{templates[randomArrayIndex(templates)]}</> }; },
+    },
+    // delusional
+    {
+        category: "confessional", type: "neutral", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState, 1, c => c.archetype === "Delusional"); if (!a) return null; applyEventPopularity(a, 4);
+        const templates = [
+            `"I'm basically running this entire house right now. Every vote, every alliance, every decision - they all go through me. I'm the puppet master and they don't even know it."`,
+            `"People might not see it yet, but I'm playing the most dominant game in this show's history. The jury is going to HAVE to respect my gameplay."`,
+            `"I've orchestrated every major move this season. Sure, other people think THEY made those decisions, but really? It was all me pulling the strings."`
+        ];
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{templates[randomArrayIndex(templates)]}</> }; },
+    },
+    // mastermind / strategist
+    {
+        category: "confessional", type: "positive", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState, 1, c => ["Mastermind", "Strategist"].includes(c.archetype)); if (!a) return null; applyEventPopularity(a, 2);
+        const templates = [
+            `"While everyone's caught up in today's petty drama, I'm already planning next week's power moves. They're playing checkers, I'm playing 4D chess, and they don't even know the game started."`,
+            `"I've got a mental spreadsheet of everyone's alliances, betrayals, and dirty secrets. Information is the ultimate currency, and baby, I'm RICH."`,
+            `"Some people follow their hearts, others flex their muscles. Me? I use my brain, and let me tell you - intelligence never goes out of style."`,
+            `"Every move in this house is calculated. What looks like drama to you is data to me. I'm building a masterclass in strategic gameplay."`,
+            `"Trust? That's earned through actions, not pretty words. I'm watching everyone's moves like it's a documentary I'll have to write a thesis on later."`,
+            `"This house is my chessboard and these people are my pieces. Don't worry though - the best strategists make everyone feel like they're winning."`
+        ];
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{templates[randomArrayIndex(templates)]}</> }; },
+    },
+    // paranoid / train wreck
+    {
+        category: "confessional", type: "neutral", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState, 1, c => ["Paranoid", "Train Wreck"].includes(c.archetype) || c.personality === "Neurotic"); if (!a) return null; applyEventPopularity(a, 2);
+        const templates = [
+            `"I've replayed a conversation in my head like fifty times and I STILL can't tell if they were being genuine or playing me. This game is destroying my anxiety levels."`,
+            `"Did that sound okay? Was I too pushy? Not pushy enough? I'm second-guessing literally every word that comes out of my mouth."`,
+            `"I can't sleep because my brain won't stop running through all the possible scenarios. What if they're lying? What if I'm the target? What if, what if, what if..."`
+        ];
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{templates[randomArrayIndex(templates)]}</> }; },
+    }, 
+    // social butterfly
+    {
+        category: "confessional", type: "positive", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState, 1, c => c.archetype === "Social Butterfly"); if (!a) return null; applyEventPopularity(a, randomInt(-2, 2));
+        const templates = [
+            `"I'm not just collecting friends like Pokemon cards - I'm building a whole empire of people who genuinely want to see me win. That's not luck, that's SKILL."`,
+            `"Everyone's obsessed with flashy challenge wins, but honey, I'm winning hearts and minds. When it's time to vote, who do you think they're gonna choose - muscles or someone who actually LISTENS to them?"`,
+            `"I might not be throwing people around in competitions, but I can read a room better than anyone here. Social intelligence is the most underrated superpower in this game."`,
+            `"My superpower is making people feel seen and heard. You can win all the challenges you want, but if nobody likes you? Good luck getting their vote."`,
+            `"I'm not being fake nice - I genuinely care about people. But I also know that genuine relationships are the strongest currency in this game."`,
+            `"The social dynamics here shift faster than trends. Good thing I'm fluent in reading people and adapting my approach."`,
+        ];
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{templates[randomArrayIndex(templates)]}</> }; },
+    },
+    // wannabe villain
+    {
+        category: "confessional", type: "neutral", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState, 1, c => c.archetype === "Wannabe Villain"); if (!a) return null; applyEventPopularity(a, -2);
+        const templates = [
+            `"Everyone thinks they know who the real villain is this season, but they have no idea what's coming. I'm orchestrating moves that will go down in reality TV history."`,
+            `"I'm not just here to play - I'm here to dominate. Every conversation, every alliance, every vote is all part of my master plan. These people are just pawns."`,
+            `"They want a villain? I'll give them the best villain this show has ever seen. I'm playing on a completely different level than these amateurs."`,
+            `"The thing about being a true mastermind is that nobody sees you coming until it's too late. By the time they realize what I've been doing, I'll already have won."`
+        ]
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{templates[randomArrayIndex(templates)]}</> }; },
+    },
+    // neutral
+    // solo
+    {
+        category: "confessional", type: "neutral", run: (splitIndex, gameState) => { if (gameState.episode > 3) return null; const a = validSolo(splitIndex, gameState, 1); if (!a) return null;
+        const templates = [
+            `"It's early days but I'm already seeing people's true colors emerge. The social butterflies, the strategic minds, the wildcards - everyone's starting to settle into their roles."`,
+            `"The honeymoon phase is officially over. People are forming alliances, making enemies, and showing what they're really made of. I'm taking mental notes on everything."`,
+        ];
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{templates[randomArrayIndex(templates)]}</> }; },
+    },   
     // pair
     {
-        category: "confessional", run: (splitIndex, gameState) => { const p = validPair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyEventPopularity(a, 1); applyEventPopularity(b, 1);
+        category: "confessional", type: "neutral", run: (splitIndex, gameState) => { const p = validPair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyEventPopularity(a, 1); applyEventPopularity(b, 1);
         return { category: "confessional", portraits: [...p], locations: ["Diary Room"], text: <>{boldText(a.preferredName())} and {boldText(b.preferredName())} are asked the same question in back-to-back confessionals. The answers directly contradict each other. Producers put them side by side and air them together.</> }; },
     },
     // negative
     // solo
     {
-        category: "confessional", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState); if (!a) return null; applyEventPopularity(a, -3);
+        category: "confessional", type: "negative", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState); if (!a) return null; applyEventPopularity(a, -3);
         return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{boldText(a.preferredName())} mouths off at a producer during a confessional, pauses, then looks directly into the camera and says it better not air. It airs. The clip is up before the episode is even over.</> }; },
+    },
+    {
+        category: "confessional", type: "negative", run: (splitIndex, gameState) => { if (gameState.episode > 3) return null; const a = validSolo(splitIndex, gameState); if (!a) return null; applyEventPopularity(a, 4);
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>"Listen, I didn't come here to make summer camp friendships. While everyone else is getting comfortable, I'm studying the game and positioning myself strategically."</> }; },
+    },
+    {
+        category: "confessional", type: "negative", run: (splitIndex, gameState) => { if (gameState.episode < gameState.houseguests.length - 4) return null; const a = validSolo(splitIndex, gameState); if (!a) return null; applyEventPopularity(a, 4);
+        const templates = [
+            `"We're in the endgame now and I can practically taste victory. This is where smart players separate themselves from the lucky ones who just survived this long."`,
+            `"The house is getting smaller and the pressure is mounting. People who coasted all season are suddenly scrambling to make moves - interesting timing."`,
+            `"This is where legends are made. I didn't fight this hard and play this smart just to stumble at the finish line. Time to lock in and finish strong."`
+        ];
+        return { category: "confessional", portraits: [a], locations: ["Diary Room"], text: <>{templates[randomArrayIndex(templates)]}</> }; },
     },
     // pair
     {
-        category: "confessional", run: (splitIndex, gameState) => { const p = validPair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyEventPopularity(a, -2);
+        category: "confessional", type: "negative", run: (splitIndex, gameState) => { const p = validPair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyEventPopularity(a, -2);
         return { category: "confessional", portraits: [...p], locations: ["Diary Room"], text: <>{boldText(a.preferredName())}'s confessional contains a comment about {boldText(b.preferredName())} that sounds like a compliment until you actually listen to it. Big Brother serves it exactly as delivered.</> }; },
     },
     // pair (attracted)
@@ -1289,7 +1384,7 @@ export const HOUSE_EVENTS: HouseEventConfig[] = [
         category: "sabotage", run: (splitIndex, gameState) => { const v = validVillain(splitIndex, gameState); if (!v) return null; const tgt = validTarget(splitIndex, gameState, v); if (!tgt) return null;
         const vN = hgPreferredName(v), tN = tgt.preferredName();
         applyRelationship(gameState, v, tgt, -10); applyEventPopularity(v, -10);
-        return { category: "sabotage", portraits: [v, tgt], text: <>{boldText(hgPreferredName(v))} makes a "joke" at {boldText(tgt.preferredName())}'s expense in the group setting. The delivery is light. The actual content is not. The villa laughs nervously. ${tN} smiles through it. The confessional tells a different story.</> }; },
+        return { category: "sabotage", portraits: [v, tgt], text: <>{boldText(vN)} makes a "joke" at {boldText(tN)}'s expense in the group setting. The delivery is light. The actual content is not. The villa laughs nervously. ${tN} smiles through it. The confessional tells a different story.</> }; },
     },
     {
         category: "sabotage", run: (splitIndex, gameState) => { const v = validVillain(splitIndex, gameState); if (!v) return null; const tgt = validTarget(splitIndex, gameState, v); if (!tgt) return null;
@@ -1349,8 +1444,10 @@ export const HOUSE_EVENTS: HouseEventConfig[] = [
             }
         },
     },
+
     // SHOWMANCE (STATUS)
     // positive
+    // pair (showmance)
     {
         category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, 20); applyEventPopularity(a, 1); applyEventPopularity(b, 1);
         return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and {boldText(b.preferredName())} are the couple everyone in the villa is rooting for this week. It shows.</> }; },
@@ -1372,7 +1469,7 @@ export const HOUSE_EVENTS: HouseEventConfig[] = [
         return { category: "romance", portraits: [...p], text: <>Late at night in the pantry, {boldText(a.preferredName())} and {boldText(b.preferredName())} start a running inside joke that only the two of them get. It becomes the highlight of both their weeks.</> }; },
     },
     {
-        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a,b,2.5); applyEventPopularity(a, 1); applyEventPopularity(b, 1);
+        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, 25); applyEventPopularity(a, 1); applyEventPopularity(b, 1);
         return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} vouches hard for ${boldText(b.preferredName())} the moment their name comes up as a target. The house notices how far they're willing to go.</> }; },
     },
     {
@@ -1400,40 +1497,41 @@ export const HOUSE_EVENTS: HouseEventConfig[] = [
         return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} gets asked whether it is real and answers honestly instead of doing the bit. It is a decent answer.</> }; },
     },
     {
-        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a,b,2.5); applyEventPopularity(a, 1); applyEventPopularity(b, 1);
-        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and ${boldText(b.preferredName())} work out they have been planning the same thing for after all this without ever having said it out loud.</> }; },
+        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, 25); applyEventPopularity(a, 1); applyEventPopularity(b, 1);
+        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and {boldText(b.preferredName())} work out they have been planning the same thing for after all this without ever having said it out loud.</> }; },
     },
     {
-        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a,b,-2.5); applyEventPopularity(a, -1); applyEventPopularity(b,-1);
-        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and ${boldText(b.preferredName())} have the same argument for the third time this week. Neither of them is even angry any more.</> }; },
+        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -25); applyEventPopularity(a, -1); applyEventPopularity(b,-1);
+        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and {boldText(b.preferredName())} have the same argument for the third time this week. Neither of them is even angry any more.</> }; },
     },
     {
         category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -20);
-        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and ${boldText(b.preferredName())} realise they have completely different ideas about what happens to this on the outside.</> }; },
+        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and {boldText(b.preferredName())} realise they have completely different ideas about what happens to this on the outside.</> }; },
     },
     {
         category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyEventPopularity(a, 1); applyEventPopularity(b, 1);
-        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and ${boldText(b.preferredName())} spend a whole day apart on purpose and both admit afterwards it was probably good for them.</> }; },
+        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and {boldText(b.preferredName())} spend a whole day apart on purpose and both admit afterwards it was probably good for them.</> }; },
+    },
+    // pair (showmance) + group
+    {
+        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; const g = validGroup(splitIndex, gameState, randomInt(3, 5), c => p.every(hg => c.id !== hg.id)); if (!g) return null; applyRelationship(gameState, a,b,1.5); g.forEach(x => applyEventPopularity(x, 1));
+        const bold = g.map(c => c.preferredName()); const last = bold.pop();
+        return { category: "romance", portraits: [a, b, ...g], text: <>{bold.join(', ')} and {last} corner {boldText(a.preferredName())} and {boldText(b.preferredName())} for a full interrogation about the showmance. Both of them hold up well.</> }; },
     },
     {
-        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; const g = validGroup(splitIndex, gameState, randomInt(3, 5)); if (!g) return null; applyRelationship(gameState, a,b,1.5); g.forEach(x => applyEventPopularity(x, 1));
+        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; const g = validGroup(splitIndex, gameState, randomInt(3, 5), c => p.every(hg => c.id !== hg.id)); if (!g) return null; applyRelationship(gameState, a,b,-1.5); g.forEach(x => applyEventPopularity(x, 1));
         const bold = g.map(c => c.preferredName()); const last = bold.pop();
-        return { category: "romance", portraits: [a, b, ...g], text: <>{bold.join(', ')} and {last} corner ${boldText(a.preferredName())} and ${boldText(b.preferredName())} for a full interrogation about the showmance. Both of them hold up well.</> }; },
+        return { category: "romance", portraits: [a, b, ...g], text: <>{bold.join(', ')} and {last} start openly taking bets on how long {boldText(a.preferredName())} and {boldText(b.preferredName())} last. It gets back to both of them.</> }; },
     },
     {
-        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; const g = validGroup(splitIndex, gameState, randomInt(3, 5)); if (!g) return null; applyRelationship(gameState, a,b,-1.5); g.forEach(x => applyEventPopularity(x, 1));
+        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; const g = validGroup(splitIndex, gameState, randomInt(3, 5), c => p.every(hg => c.id !== hg.id)); if (!g) return null; applyRelationship(gameState, a, b, 20); applyEventPopularity(a, 1); applyEventPopularity(b, 1);
         const bold = g.map(c => c.preferredName()); const last = bold.pop();
-        return { category: "romance", portraits: [a, b, ...g], text: <>{bold.join(', ')} and {last} start openly taking bets on how long ${boldText(a.preferredName())} and ${boldText(b.preferredName())} last. It gets back to both of them.</> }; },
+        return { category: "romance", portraits: [a, b, ...g], text: <>{bold.join(', ')} and {last} throw {boldText(a.preferredName())} and {boldText(b.preferredName())} a villa anniversary for no particular milestone. There is a certificate.</> }; },
     },
     {
-        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; const g = validGroup(splitIndex, gameState, randomInt(3, 5)); if (!g) return null; applyRelationship(gameState, a, b, 20); applyEventPopularity(a, 1); applyEventPopularity(b, 1);
+        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; const g = validGroup(splitIndex, gameState, randomInt(3, 5), c => p.every(hg => c.id !== hg.id)); if (!g) return null; g.forEach(x => applyEventPopularity(x, 1));
         const bold = g.map(c => c.preferredName()); const last = bold.pop();
-        return { category: "romance", portraits: [a, b, ...g], text: <>{bold.join(', ')} and {last} throw ${boldText(a.preferredName())} and ${boldText(b.preferredName())} a villa anniversary for no particular milestone. There is a certificate.</> }; },
-    },
-    {
-        category: "showmance", type: "positive", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; const g = validGroup(splitIndex, gameState, randomInt(3, 5)); if (!g) return null; g.forEach(x => applyEventPopularity(x, 1));
-        const bold = g.map(c => c.preferredName()); const last = bold.pop();
-        return { category: "romance", portraits: [a, b, ...g], text: <>{bold.join(', ')} and {last} spend an evening arguing about whether ${boldText(a.preferredName())} and ${boldText(b.preferredName())} would have found each other on the outside. No conclusion.</> }; },
+        return { category: "romance", portraits: [a, b, ...g], text: <>{bold.join(', ')} and {last} spend an evening arguing about whether {boldText(a.preferredName())} and {boldText(b.preferredName())} would have found each other on the outside. No conclusion.</> }; },
 
     },
     // neutral
@@ -1447,7 +1545,7 @@ export const HOUSE_EVENTS: HouseEventConfig[] = [
     },
     {
         category: "showmance", type: "neutral", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p;
-        return { category: "romance", portraits: [...p], text: <>Quiet week for ${boldText(a.preferredName())} and ${boldText(b.preferredName())}. They're around each other as usual. Nothing to flag either way.</> }; },
+        return { category: "romance", portraits: [...p], text: <>Quiet time for {boldText(a.preferredName())} and {boldText(b.preferredName())}. They're around each other as usual. Nothing to flag either way.</> }; },
     },
     {
         category: "showmance", type: "neutral", timeOfDay: ["evening"], run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p;
@@ -1464,32 +1562,32 @@ export const HOUSE_EVENTS: HouseEventConfig[] = [
         return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and ${boldText(b.preferredName())} snap at each other over something small. It blows over, but it was there in front of everyone.</> }; },
     },
     {
-        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a,b,-2.5); applyEventPopularity(a, -1);
+        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -25); applyEventPopularity(a, -1);
         return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} spends the day glued to the rest of the house instead of ${boldText(b.preferredName())}. ${b.preferredName()} clocks it and says nothing. For now.</> }; },
     },
     {
-        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a,b,-3);
+        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -30);
         return { category: "romance", portraits: [...p], text: <>Game talk turns into a real argument between ${boldText(a.preferredName())} and ${boldText(b.preferredName())} about who's actually running their partnership. Neither backs down.</> }; },
     },
     {
-        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a,b,-1.5);
+        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -15);
         return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and ${boldText(b.preferredName())} barely speak today. Nothing happened, exactly. It just feels different.</> }; },
     },
     {
-        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a,b,-2.5);
+        category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -25);
         return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} and ${boldText(b.preferredName())} disagree about who to target next and it turns into something bigger than either of them intended.</> }; },
     },
     {
         category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -20);
-        return { category: "romance", portraits: [...p], text: <>{boldText(b.preferredName())} campaigns against someone ${boldText(a.preferredName())} actually likes and ${a.preferredName()} cannot let it go. The tension follows them for the rest of the day.</> }; },
+        return { category: "romance", portraits: [...p], text: <>{boldText(b.preferredName())} campaigns against someone ${boldText(a.preferredName())} actually likes and {a.preferredName()} cannot let it go. The tension follows them for the rest of the day.</> }; },
     },
     {
-        category: "showmance", type: "negative", timeOfDay: ["afternoon"], run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a,b,-1.5);
-        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} spends a whole afternoon deep in strategy talk with someone else while ${boldText(b.preferredName())} watches from across the room.</> }; },
+        category: "showmance", type: "negative", timeOfDay: ["afternoon"], run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -15);
+        return { category: "romance", portraits: [...p], text: <>{boldText(a.preferredName())} spends a whole afternoon deep in strategy talk with someone else while {boldText(b.preferredName())} watches from across the room.</> }; },
     },
     {
         category: "showmance", type: "negative", run: (splitIndex, gameState) => { const p = validShowmancePair(splitIndex, gameState); if (!p) return null; const [a, b] = p; applyRelationship(gameState, a, b, -20);
-        return { category: "romance", portraits: [...p], text: <>A joke ${boldText(a.preferredName())} makes about their showmance gets back to ${boldText(b.preferredName())} out of context. It does not land the way ${a.preferredName()} meant it.</> }; },
+        return { category: "romance", portraits: [...p], text: <>A joke {boldText(a.preferredName())} makes about their showmance gets back to {boldText(b.preferredName())} out of context. It does not land the way {a.preferredName()} meant it.</> }; },
     },
 
     // SPOTLIGHT
@@ -1532,10 +1630,6 @@ export const HOUSE_EVENTS: HouseEventConfig[] = [
         category: "spotlight", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState); if (!a) return null; const g = validGroup(splitIndex, gameState, randomInt(3, 5)); if (!g) return null;
         const others = g.filter(c => c.id !== a.id); applyEventPopularity(a, 3); others.forEach(x => { applyEventPopularity(x, 1); applyRelationship(gameState, a, x, 10); });
         return { category: "spotlight", portraits: [a, ...others], text: <>{boldText(a.preferredName())} does an impression of someone in the villa. The villa loses it. The person being impersonated is also laughing. It is the loosest, most human the villa has felt all week.</> }; },
-    },
-    {
-        category: "spotlight", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState); if (!a) return null; applyEventPopularity(a, 40);
-        return { category: "spotlight", portraits: [a], text: <>{boldText(a.preferredName())} does something genuinely decent this week that nobody expected and the villa does not know how to process it. The confessional makes clear they have been misjudged. Viewers start defending them online.</> }; },
     },
     {
         category: "spotlight", run: (splitIndex, gameState) => { const a = validSolo(splitIndex, gameState); if (!a) return null; applyEventPopularity(a, 3);

@@ -73,14 +73,11 @@ export const usePlayers = () => {
 
 export function CastingScreen({ cast, ...props }: CastingScreenProps) {
     const [players, setPlayers] = useState<PlayerProfile[]>(() => {
-        if (cast) {
-            selectCastPlayer(null);
-            cast.forEach((player) => {
-                player.castingScreenId = id++;
-            });
-            return [...cast];
-        }
-        return [];
+        if (!cast) return [];
+        return cast.map((player) => ({
+            ...player,
+            castingScreenId: id++,
+        }));
     });
     const [selectedPlayers, setSelectedPlayers] = useState<Set<number>>(() => new Set<number>());
 
@@ -546,7 +543,7 @@ export function CastingScreen({ cast, ...props }: CastingScreenProps) {
             let unselectedPlayers: PlayerProfile[] = [];
 
             prevPlayers.forEach((player) => {
-                if (selectedPlayers.has(player.castingScreenId || -1)) {
+                if (selectedPlayers.has(player.castingScreenId ?? -1)) {
                     result.push(player);
                     amount--;
                 } else {

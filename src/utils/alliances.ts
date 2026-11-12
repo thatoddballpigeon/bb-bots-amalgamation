@@ -1,5 +1,6 @@
 import { allianceEvents } from "../components/episode/utilities/allianceEventFactory";
 import { applyRelationship } from "../components/episode/utilities/houseEventFactory";
+import { vetoCeremonyInformation } from "../components/episode/utilities/tvRatings";
 import { getArchetypeClass } from "../components/playerPortrait/archetypes";
 import { getPersonalityClass } from "../components/playerPortrait/personalities";
 import { GameState, getHouseguestById, hgPreferredName, Houseguest, nonEvictedHouseguests, nonEvictedHouseguestsSplit, randomPlayer } from "../model";
@@ -153,10 +154,14 @@ function getAllianceStrength(gameState: GameState, alliance: Alliances) {
 
 function getAllianceCount(gameState: GameState, hero: Houseguest) {
     const alive = (c: number) => nonEvictedHouseguests(gameState).find(g => g.id === c)?.id;
-    return (gameState.alliances || []).filter(al =>
+    return gameState.alliances.filter(al =>
         al.isActive && !al.isShowmance && al.members.includes(hero.id)
         && al.members.filter(alive).length >= 2
     ).length;
+}
+
+function getOverallShowmanceCount(gameState: GameState) {
+    return gameState.alliances.filter(al => al.isActive && al.isShowmance).length;
 }
 
 function pickAllianceName(gameState: GameState, members: number[]) {
@@ -398,8 +403,7 @@ export function checkGroupAllianceFormation(splitIndex: number | null | undefine
 
 export function checkShowmanceFormation(splitIndex: number | null | undefined, gameState: GameState) {
     // if (!hhState.showmancesEnabled) return;
-    if (!gameState.alliances) return;
-    // if ((hhState.showmancesFormedCount || 0) >= (hhState.maxShowmances ?? 3)) return;
+    if (!gameState.alliances || getOverallShowmanceCount(gameState) >= 3) return;
 
     const eligible = nonEvictedHouseguestsSplit(splitIndex, gameState).filter(c =>
         !c.intruder.isIntruder &&
@@ -442,10 +446,9 @@ function updateAllianceStrengths(splitIndex: number | null | undefined, gameStat
     const hohs = houseguests.filter(hg => hg.hoh.isHoH);
     const povs = houseguests.filter(hg => hg.pov.hasVeto);
     const vetoSaves: {holder: number, saved: number}[] = [];
-    /*
-    if (ep?._vetoCeremony?.decision === 'use' && ep._vetoCeremony.savedNominee)
-        vetoSaves.push({ holderId: vetoWinnerId, savedId: ep._vetoCeremony.savedNominee.id });
-    */
+    vetoCeremonyInformation.forEach((veto) => {
+        if (veto.saved) vetoSaves.push({ holder: veto.pov.id, saved: veto.saved.id });
+    })
     const nomineeIds = new Set(houseguests.filter(hg => hg.isNominated).map(id => Number(id)));
     const betrayedIds = new Set(events.filter(e => e.type === 'member_removed').map(e => e.removed));
 

@@ -1,6 +1,7 @@
 import { GameState, Houseguest, PlayerProfile } from "../model";
 import { cast$ } from "../subjects/subjects";
 import { areShowmanced } from "./alliances";
+import { randomInt } from "./utilities";
 
 export interface Relationship {
     friendship: number;
@@ -57,8 +58,8 @@ function romanceAffinityFromCompatVec(compatVec: number[]) {
 export function firstImpressions(gameState: GameState) {
     const hgs = gameState.houseguests;
     
-    const initialSource = cast$.value.options?.relationships || firstImpressionsMap(hgs);
-    
+    const relationships = cast$.value.options?.relationships;
+    const initialSource = relationships && Object.keys(relationships).length > 0 ? relationships : firstImpressionsMap(hgs, false);
     for (let i = 0; i < hgs.length; i++) {
         for (let j = 0; j < hgs.length; j++) {
             if (i === j) continue;
@@ -71,50 +72,37 @@ export function firstImpressions(gameState: GameState) {
     }
 }
 
-export function firstImpressionsMap(hgs: PlayerProfile[]): Record<number, Record<number, Relationships>> {
-    /*
-    const AMP = 0.15;
-    cs.forEach(c => {
-        const base = computeTraits(c);
-        c.traits = base.map(v => Math.max(-1, Math.min(1, v + (Math.random() * 2 - 1) * AMP)));
-    });
-    */
+export function firstImpressionsMap(hgs: PlayerProfile[], randomize: boolean): Record<number, Record<number, Relationships>> {
     const relationships: Record<number, Record<number, Relationships>> = {};
     hgs.forEach((a, aIdx) => {
+        if (!relationships[aIdx]) relationships[aIdx] = {};
         hgs.forEach((b, bIdx) => {
             if (aIdx === bIdx) return;
 
             const compatVec = a.traits.map((ta, d) => ta * b.traits[d]);
             const baseAffinity = compatVec.reduce((s, v) => s + v, 0) / 8;
             const romanceAffinity = romanceAffinityFromCompatVec(compatVec);
-            if (!relationships[aIdx]) {
-                relationships[aIdx] = {};
+            
+            let strength = 0;
+            let romance = 0;
+
+            if (randomize) {
+                strength = randomInt(-100, 100);
+                romance = randomInt(0, 100);
+            } else {
+                const noise = (Math.random() - 0.5) * 40;
+                strength = Math.round(Math.max(-100, Math.min(100, baseAffinity * 70 + noise)));
+                romance = Math.round(Math.max(0, Math.min(100, (romanceAffinity * 40) + ((Math.random() - 0.5) * 20))));
             }
 
-            const existing = relationships[aIdx][bIdx];
-            if (existing) {
-                relationships[aIdx][bIdx] = { 
-                    ...existing, 
-                    compatVec, 
-                    baseAffinity, 
-                    romanceAffinity, 
-                    momentum: existing.momentum ?? 0, 
-                    romance: existing.romance ?? 0 
-                };
-            } else {
-                const noise = (Math.random() - 0.5) * 50;
-                const strength = Math.max(-100, Math.min(100, baseAffinity * 160 + noise));
-                const romance = Math.max(0, Math.min(100, romanceAffinity * 80 + (Math.random() - 0.5) * 40));
-                
-                relationships[aIdx][bIdx] = { 
-                    strength, 
-                    momentum: 0, 
-                    compatVec, 
-                    baseAffinity, 
-                    romanceAffinity, 
-                    romance 
-                };
-            }
+            relationships[aIdx][bIdx] = { 
+                strength, 
+                momentum: 0, 
+                compatVec, 
+                baseAffinity, 
+                romanceAffinity, 
+                romance 
+            };
         });
     });
     return relationships;

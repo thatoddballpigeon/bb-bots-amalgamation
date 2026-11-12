@@ -84,9 +84,6 @@ export function generateEvictionScene(
         scored.sort((a, b) => isEvict ? b.score - a.score : a.score - b.score);
         const target = scored[0]?.contestant;
         if (!target) return null;
-        newGameState.currentLog.votes[voter.id] = isEvict
-            ? new NormalVote(target.id)
-            : new SaveVote(target.id);
         options.nomineesCanVote &&
             nominees.some((nom) => nom.id === voter.id) &&
             (votesOfNominees[voter.id] = getHouseguestById(newGameState, target.id).preferredName());
@@ -97,7 +94,13 @@ export function generateEvictionScene(
 
     const tally: number[] = [];
     nominees.forEach(nom => { tally[nom.id] = 0; });
-    shuffled.forEach(v => { tally[v.target.id]++; });
+    shuffled.forEach(v => {
+        const target = v.target.id; 
+        newGameState.currentLog.votes[v.voter.id] = isEvict
+            ? new NormalVote(target)
+            : new SaveVote(target);
+        tally[target]++;
+    });
 
     const sorted = nominees.map(c => ({ contestant: c, votes: tally[c.id] || 0 }))
         .sort((a, b) => b.votes - a.votes);
@@ -164,26 +167,23 @@ export function generateEvictionScene(
         ? `${getHouseguestById(newGameState, tiebreaker.id).preferredName()}, as ${compWinner}, you must cast the sole vote to ${options.votingTo.toLowerCase()}.`
         : "";
 
-    console.time("Wrapping Ups")
-    hohWinners.forEach((hoh) => {
-        const hg = getHouseguestById(newGameState, hoh.id);
-        hg.hoh.isHoH = false;
-        hg.hoh.nominated = [];
-    });
-    nominees.forEach((nom) => {
-        const hg = getHouseguestById(newGameState, nom.id);
-        newGameState.currentLog.votes[nom.id] = new NomineeVote(
-            evicteesSet.has(nom.id),
-            options.nomineesCanVote ? votesOfNominees[nom.id] : undefined
-        );
+    for (const { id } of hohWinners) {
+        const h = getHouseguestById(newGameState, id).hoh;
+        h.isHoH = false;
+        h.nominated = [];
+    }
+
+    for (const { id } of nominees) {
+        newGameState.currentLog.votes[id] = new NomineeVote(evicteesSet.has(id), options.nomineesCanVote ? votesOfNominees[id] : undefined);
+        const hg = getHouseguestById(newGameState, id);
         hg.isNominated = false;
         hg.nominatorId = -1;
-    });
-    evictees.forEach((evictee) => {
+    }
+
+    for (const evictee of evictees) {
         newGameState = evictHouseguest(newGameState, evictee.id);
         evictee.isJury = getHouseguestById(newGameState, evictee.id).isJury;
-    });
-    console.timeEnd("Wrapping Ups")
+    }
 
     const groupedVotes = Object.values(
         votes.reduce<Record<number, VoteGroup>>((acc, current) => {

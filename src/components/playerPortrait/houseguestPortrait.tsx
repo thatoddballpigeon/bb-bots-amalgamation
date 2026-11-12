@@ -137,14 +137,14 @@ export class HouseguestPortrait extends React.Component<PortraitProps, PortraitS
     }
 
     private changeRelationship(data: SelectedPlayerData): void {
-        const name1 = listFullName(data?.name);
-        const name2 = listFullName(this.props.name);
+        const heroName = listFullName(this.props.name);
+        const villainName = listFullName(data?.name);
         const strength = this.props.relationships![data.id]?.strength ?? 0;
         const romance = this.props.relationships![data.id]?.romance ?? 0;
 
         let friendship = parseFloat(
             window.prompt(
-                `Enter friendship value. ${name1}'s current opinion towards ${name2}:`,
+                `Enter friendship value. ${heroName}'s current opinion towards ${villainName}:`,
                 `${strength}`
             ) || ""
         );
@@ -152,7 +152,7 @@ export class HouseguestPortrait extends React.Component<PortraitProps, PortraitS
 
         let romantic = parseFloat(
             window.prompt(
-                `Enter romance value. ${name1}'s current romantic feelings towards ${name2}:`,
+                `Enter romance value. ${heroName}'s current romantic feelings towards ${villainName}:`,
                 `${romance}`
             ) || ""
         );

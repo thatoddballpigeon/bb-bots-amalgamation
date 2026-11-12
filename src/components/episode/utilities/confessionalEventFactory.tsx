@@ -197,7 +197,6 @@ function generateGeneralConfessionals(
     const personality = speaking.personality;
 
     const activeHgs = nonEvictedHouseguestsSplit(splitIndex, gameState).filter(c => !c.isHidden);
-    const currentWeek = gameState.episode;
     const HoHs = activeHgs.filter(hg => hg.hoh.isHoH).sort((a, b) => speaking.relationshipWith(gameState, b) - speaking.relationshipWith(gameState, a));
     const worstHoH = getHouseguestById(gameState, HoHs[0]?.id);
     const nominees = activeHgs.filter(hg => hg.isNominated);
@@ -212,23 +211,6 @@ function generateGeneralConfessionals(
 
     // Context-aware confession generation
     const confessionalContexts = [
-        // Episode progression context
-        {
-            condition: () => currentWeek <= 3,
-            templates: [
-                `It's early days but I'm already seeing people's true colors emerge. The social butterflies, the strategic minds, the wildcards - everyone's starting to settle into their roles.`,
-                `The honeymoon phase is officially over. People are forming alliances, making enemies, and showing what they're really made of. I'm taking mental notes on everything.`,
-                `Listen, I didn't come here to make summer camp friendships. While everyone else is getting comfortable, I'm studying the game and positioning myself strategically.`
-            ]
-        },
-        {
-            condition: () => currentWeek >= activeHgs.length - 4,
-            templates: [
-                `We're in the endgame now and I can practically taste victory. This is where smart players separate themselves from the lucky ones who just survived this long.`,
-                `The house is getting smaller and the pressure is mounting. People who coasted all season are suddenly scrambling to make moves - interesting timing.`,
-                `This is where legends are made. I didn't fight this hard and play this smart just to stumble at the finish line. Time to lock in and finish strong.`
-            ]
-        },
         // Relationship-based context
         {
             condition: () => closestAlly && speaking.relationshipWith(gameState, closestAlly) >= 60,
@@ -251,12 +233,12 @@ function generateGeneralConfessionals(
             condition: () => worstHoH && worstHoH.id === speaking.id,
             templates: [
                 `Being Head of Household is like being the popular kid at lunch - everyone suddenly wants to be your bestie. Too bad for them, I see right through the fake smiles and desperate pitches.`,
-                `This crown comes with a target, but it also comes with POWER. And honey, I look good in both. Time to make some nominations that'll have people shook.`,
+                `This crown comes with a target, but it also comes with POWER, and I look good in both. Time to make some nominations that'll have people shook.`,
                 `Everyone and their mother is trying to influence my nominations. Cute effort, but I didn't win this power to do YOUR bidding - I'm playing MY game, not yours.`
             ]
         },
         {
-            condition: () => worstHoH && speaking.relationshipWith(gameState, worstHoH) <= -3,
+            condition: () => worstHoH && speaking.relationshipWith(gameState, worstHoH) <= -30,
             templates: [
                 `${worstHoH && worstHoH.preferredName()} is really out here thinking this little crown makes them untouchable. Baby, power is temporary but karma is FOREVER. Your time is coming.`,
                 `I cannot STAND ${worstHoH && worstHoH.preferredName()} right now. Acting all high and mighty because they won one little challenge. Sir/ma'am, this is a marathon, not a sprint.`,
@@ -272,32 +254,6 @@ function generateGeneralConfessionals(
                 `Getting nominated really shows you who your friends are versus who's been plotting your downfall in group chats. The betrayal is noted and will be remembered.`
             ]
         },
-        // Archetype-specific modern takes
-        {
-            condition: () => archetype === 'Social Butterfly',
-            templates: [
-                `I'm not just collecting friends like Pokemon cards - I'm building a whole empire of people who genuinely want to see me win. That's not luck, that's SKILL.`,
-                `Everyone's obsessed with flashy challenge wins, but honey, I'm winning hearts and minds. When it's time to vote, who do you think they're gonna choose - muscles or someone who actually LISTENS to them?`,
-                `I might not be throwing people around in competitions, but I can read a room better than anyone here. Social intelligence is the most underrated superpower in this game.`
-            ]
-        },
-        {
-            condition: () => archetype === 'Strategist' || archetype === 'Mastermind',
-            templates: [
-                `While everyone's caught up in today's petty drama, I'm already planning next week's power moves. They're playing checkers, I'm playing 4D chess, and they don't even know the game started.`,
-                `I've got a mental spreadsheet of everyone's alliances, betrayals, and dirty secrets. Information is the ultimate currency, and baby, I'm RICH.`,
-                `Some people follow their hearts, others flex their muscles. Me? I use my brain, and let me tell you - intelligence never goes out of style.`
-            ]
-        },
-        {
-            condition: () => archetype === 'Wannabe Villain',
-            templates: [
-                `Everyone thinks they know who the real villain is this season, but they have no idea what's coming. I'm orchestrating moves that will go down in reality TV history.`,
-                `I'm not just here to play - I'm here to dominate. Every conversation, every alliance, every vote is all part of my master plan. These people are just pawns.`,
-                `They want a villain? I'll give them the best villain this show has ever seen. I'm playing on a completely different level than these amateurs.`,
-                `The thing about being a true mastermind is that nobody sees you coming until it's too late. By the time they realize what I've been doing, I'll already have won.`
-            ]
-        }
     ];
 
     // Find applicable contexts
@@ -317,13 +273,6 @@ function generateGeneralConfessionals(
             `The competition is absolutely FIERCE, but I didn't travel all this way to be background noise. I'm adapting, evolving, and fighting for every single day.`
         ];
     }
-
-    selectedTemplates.push(...[
-        // -3
-        `I mouth off at a producer during a confessional, pause, then look directly into the camera and says it better not air. It airs. The clip is up before the episode is even over.`,
-        // -2
-        `My confessional contains a comment about someone that sounds like a compliment until you actually listen to it. Big Brother serves it exactly as delivered.`
-    ])
 
     return {
         category: "confession",

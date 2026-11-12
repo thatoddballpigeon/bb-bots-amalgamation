@@ -109,6 +109,8 @@ export function generateBBVanillaScenes(
     const previousHohCanCompete = options.previousHoHcanCompete;
 
     if (!doubleEviction) {
+            console.time("Evicting?")
+
         let houseEventsScene;
         [currentGameState, houseEventsScene] = generateHouseEventsScene(
             currentGameState, 
@@ -118,6 +120,8 @@ export function generateBBVanillaScenes(
             nominees,
             {}
         );
+            console.timeEnd("Evicting?")
+
         scenes.push(houseEventsScene);
     }
 
@@ -166,7 +170,6 @@ export function generateVetoScenesOnwards(
     let povPlayers: Houseguest[] | undefined = [];
     let povWinners: Houseguest[] | undefined = [];
     // force no veto if 3 or less houseguests are participating in the episode
-    console.time("Veto")
     if (!lessThan3Hgs) {
         if (veto) {
             let vetoPickingsScene;
@@ -177,13 +180,14 @@ export function generateVetoScenesOnwards(
                 { veto, doubleEviction, splitIndex }
             );
             scenes.push(vetoPickingsScene);
-
+            console.time("Veto")
             let vetoCompetitionScene;
             [currentGameState, vetoCompetitionScene, povWinners] = generateCompetitionScene(
                 currentGameState,
                 { competitors: povPlayers, compType: "PoV", veto, doubleEviction, doubleVeto, splitIndex}
             );
             scenes.push(vetoCompetitionScene);
+            console.timeEnd("Veto");
 
             let vetoResultsScene;
             [currentGameState, vetoResultsScene] = generateCompetitionResultsScene(
@@ -232,8 +236,6 @@ export function generateVetoScenesOnwards(
             scenes.push(houseEventsScene);
         }
     }
-    console.timeEnd("Veto")
-    console.time("Evicting?")
     let evictionScene;
     [currentGameState, evictionScene] = generateEvictionScene(currentGameState, hohWinners, nominees, {
         evictionTitle: doubleEviction && options.thirdNominee ? "Triple Eviction" : undefined,
@@ -244,7 +246,6 @@ export function generateVetoScenesOnwards(
         tieBreaker: options.tieBreaker && options.tieBreaker(povWinners[0]),
     });
     scenes.push(evictionScene);
-    console.timeEnd("Evicting?")
 
     let twinTwistScene = generateTwinTwist(currentGameState);
     if (twinTwistScene) scenes.push(twinTwistScene);

@@ -23,22 +23,22 @@ interface AllianceListProps {
 export function AllianceList(props: AllianceListProps) {
     const alliances = props.gameState.alliances;
     const elements: JSX.Element[] = [];
+    if (alliances.length === 0) {
+        elements.push(
+            <HasText>
+                <Centered>
+                    No alliances as of now.
+                </Centered>
+            </HasText>
+        );
+    }
     alliances.forEach((alliance, i) => {
         elements.push(<hr key={`hr-${i}`} />);
         props.gameState.split[i] &&
             elements.push(<CenteredBold key={`title-${i}`}>{props.gameState.split[i].name}</CenteredBold>);
-        if (alliances.length === 0) {
-            elements.push(
-                <HasText>
-                    <Centered>
-                        No alliances as of now.
-                    </Centered>
-                </HasText>
-            );
-        }
         elements.push(
             <OverlayBox>
-                <Centered>{alliance.name}</Centered>
+                <Centered>{alliance.name} {alliance.episodeDissolved ? `(Dissolved in episode ${alliance.episodeDissolved})` : ""}</Centered>
                 <Portraits
                     centered={true}
                     detailed={false}
@@ -46,24 +46,14 @@ export function AllianceList(props: AllianceListProps) {
                     key={`alliance-${i}-${props.gameState.episode}`}
                     houseguests={alliance.members.map(id => getHouseguestById(props.gameState, id))}
                 />
-                <Centered>{alliance.strength} / 10</Centered>
+                <Centered>Loyalty: {alliance.strength} / 10</Centered>
                 <Centered>Episode formed: {alliance.episodeFormed}</Centered>
             </OverlayBox>
         );
     });
-    elements.shift(); // removes the leading hr
     return (
         <div>
             {elements}
-            {props.gameState.episode < 3 && (
-                <HelpLink
-                    href="https://github.com/spaulmark/bb-bots/blob/master/README.md#understanding-alliances-or-what-do-the-arrows-mean"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    What do the arrows mean?
-                </HelpLink>
-            )}
         </div>
     );
 }

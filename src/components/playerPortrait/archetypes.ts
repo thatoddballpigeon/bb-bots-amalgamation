@@ -215,16 +215,6 @@ export const ARCHETYPES = [
 export const ARCHETYPE_CLASS_MAP = Object.fromEntries(ARCHETYPES.map(a => [a.name, a.class]));
 
 export const ARCHETYPE_CONFESSIONALS = {
-    'Strategist': [
-        `Every move in this house is calculated. What looks like drama to you is data to me. I'm building a masterclass in strategic gameplay.`,
-        `Trust? That's earned through actions, not pretty words. I'm watching everyone's moves like it's a documentary I'll have to write a thesis on later.`,
-        `This house is my chessboard and these people are my pieces. Don't worry though - the best strategists make everyone feel like they're winning.`
-    ],
-    'Social Butterfly': [
-        `My superpower is making people feel seen and heard. You can win all the challenges you want, but if nobody likes you? Good luck getting their vote.`,
-        `I'm not being fake nice - I genuinely care about people. But I also know that genuine relationships are the strongest currency in this game.`,
-        `The social dynamics here shift faster than TikTok trends. Good thing I'm fluent in reading people and adapting my approach.`
-    ],
     'Physical Threat': [
         `These challenge wins come with a target, but they also come with RESPECT. I'm proving that I'm not just here to make up numbers.`,
         `Everyone assumes muscles equal no brains. Cool, let them underestimate me while I dominate both the physical and strategic game.`,
@@ -300,21 +290,6 @@ export const ARCHETYPE_CONFESSIONALS = {
         `Playing in the shadow of a former player is SO much pressure. I want to prove myself on my own merit, not just be known as someone's sibling.`,
         `If this connection comes out, I need to control the narrative. Do I own it? Deny it? Use it strategically? The paranoia is eating me alive.`
     ],
-    'Paranoid': [
-        `I've replayed that conversation in my head like fifty times and I STILL can't tell if they were being genuine or playing me. This game is destroying my anxiety levels.`,
-        `Did that sound okay? Was I too pushy? Not pushy enough? I'm second-guessing literally every word that comes out of my mouth.`,
-        `I can't sleep because my brain won't stop running through all the possible scenarios. What if they're lying? What if I'm the target? What if, what if, what if...`
-    ],
-    'Crybaby': [
-        `I know I cry a lot but this game is just SO overwhelming! The pressure, the paranoia, the constant stress - it's all too much sometimes.`,
-        `Everyone probably thinks I'm weak because I get emotional, but these tears are REAL. I can't help that I feel everything so deeply.`,
-        `I've cried like three times today already and it's not even the elimination yet. I'm just so scared and stressed and I miss home.`
-    ],
-    'Delusional': [
-        `I'm basically running this entire house right now. Every vote, every alliance, every decision - they all go through me. I'm the puppet master and they don't even know it.`,
-        `People might not see it yet, but I'm playing the most dominant game in this show's history. The jury is going to HAVE to respect my gameplay.`,
-        `I've orchestrated every major move this season. Sure, other people think THEY made those decisions, but really? It was all me pulling the strings.`
-    ]
 };
 
 export function getArchetypeClass(archetype: string) {
@@ -368,7 +343,7 @@ export function archetypeNominationMod(
     if (aliveCount < 7) {
         const skeptical = Math.max(0, -t[6]);
         const sm = getHouseguestById(gameState, candidate.id);
-        const compWins = sm.hohWins + sm.povWins;
+        const compWins = sm.hoh.hohWins + sm.pov.povWins;
         mod += compWins * skeptical * 0.5;
     }
 

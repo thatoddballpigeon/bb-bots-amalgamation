@@ -37,10 +37,16 @@ export function Portraits(props: {
     detailed?: boolean;
 }): JSX.Element {
     const rows: JSX.Element[] = [];
-    if (!props.houseguests || props.houseguests.length === 0) {
+    const houseguestList = Array.isArray(props.houseguests)
+        ? props.houseguests
+        : props.houseguests
+            ? [props.houseguests]
+            : [];
+
+    if (!houseguestList || houseguestList.length === 0) {
         return <div />;
     }
-    props.houseguests.forEach((houseguest: ProfileHouseguest | "⬅️" | "➡️"| "⬇️" ) => {
+    houseguestList.forEach((houseguest: ProfileHouseguest | "⬅️" | "➡️"| "⬇️" ) => {
         if (!houseguest) return;
         let result;
         const isArrow = houseguest === "⬅️" || houseguest === "➡️" || houseguest === "⬇️"

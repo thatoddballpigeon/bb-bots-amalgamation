@@ -2,11 +2,10 @@ import { every } from "lodash";
 import { Houseguest, GameState, excludeHouseguests, getHouseguestById, nonEvictedHouseguestsSplit, calculatePopularity, nonEvictedHouseguests, calculateThreatScore } from "../../../model";
 import { backdoorNPlayers, HouseguestWithLogic, NumberWithLogic, voteTargetScore } from "../../../utils/ai/aiApi";
 import { TargetStrategy } from "../../../utils/ai/targets";
-import { determineTargetStrategy } from "../../../utils/ai/hitList";
 import { isAllied } from "../../../utils/alliances";
 import { getRelationshipStrength } from "../../../utils";
 import { applyEventPopularity } from "../utilities/houseEventFactory";
-import { generateExcuse } from "../../../utils/ai/generateExcuse";
+import { generateVetoReason } from "../utilities/nominationReasons";
 
 export interface Veto {
     name: string;
@@ -76,7 +75,7 @@ function useBoomerangVeto(
         return { decision: nominees[0], reason: "I want to save both of these noms." };
     }
     // if you would only use it on one of them, only use it if you have low friend counts
-    const strategy = determineTargetStrategy(hero);
+    const strategy = 0;
     if (strategy === TargetStrategy.StatusQuo) {
         return { decision: null, reason: "I want to evict at least one of these noms." };
     } else {
@@ -96,6 +95,9 @@ function useSpotlightVeto(
     const winner = getHouseguestById(gameState, hero.id);
     const checks = basicVetoChecks(winner, nominees, gameState, HoH, optionals);
     if (checks && checks.decision !== null) return checks;
+
+    const hoh = getHouseguestById(gameState, HoH);
+
     const saveRels = nominees.map(nom => ({
         nom,
         rel: getRelationshipStrength(gameState, winner, nom),
@@ -104,7 +106,7 @@ function useSpotlightVeto(
     const saved = getHouseguestById(gameState, bestSaveEntry.nom.id);
     // use the veto on whoever is the worse target between the 2 nominees
     applyEventPopularity(saved, 2);
-    return { decision: saved, reason: generateExcuse(gameState, hero, saved.id, "good") };
+    return { decision: saved, reason: generateVetoReason(gameState, winner, saved, hoh, "use") };
 }
 
 // save ppl on hit list above friendship threshold
@@ -119,6 +121,8 @@ function useGoldenVeto(
     const checks = basicVetoChecks(winner, nominees, gameState, HoH, optionals);
     if (checks) return checks;
     
+    const hoh = getHouseguestById(gameState, HoH);
+
     const saveThreshold = hero.housePopularity;
     const saveRels = nominees.map(nom => ({
         nom,
@@ -130,9 +134,9 @@ function useGoldenVeto(
 
     if (bestSaveDir > saveThreshold) {
         applyEventPopularity(saved, 2);
-        return { decision: saved, reason: generateExcuse(gameState, hero, saved.id, "good") };
+        return { decision: saved, reason: generateVetoReason(gameState, winner, saved, hoh, "use") };
     } else {
-        return { decision: null, reason: "I don't want to save any of these noms." };
+        return { decision: null, reason: generateVetoReason(gameState, winner, saved, hoh, "discard") };
     }
 }
 
@@ -211,40 +215,44 @@ function basicVetoChecks(
         const nominee = bestSaveEntry.nom;
         const relationship = winner.relationshipWith(gameState, nominee);
         const traits = winner.traits;
+        const norm = (val: number) => (val + 1) / 2;
 
-        const personalDrive = traits[5] * traits[7];
-        const alarmMultiplier = Math.pow(2, -traits[4]);
-        const defensiveShield = Math.max(0, (-traits[6]) * (-traits[3]));
-        const warmthTax = traits[0] * 0.5;
-        const egoMultiplier = Math.pow(2, -traits[5]);
+        const warmth = norm(traits[0]), loyalty = norm(traits[1]), 
+            authenticity = norm(traits[2]), cooperation = norm(traits[3]),
+            composure = norm(traits[4]), ego = norm(traits[5]), 
+            trust = norm(traits[6]), intensity = norm(traits[7]);
 
-        const rawBravery = traits[2] * traits[4] * traits[7];
-        const rawAltruism = traits[3] * traits[0];
+        const altruism = ((warmth + cooperation + trust) / 3) * (1 - ego * 0.5);
+        const bravery = ((authenticity + composure + intensity) / 3) * (1 - ego * 0.3);
+        const gullibility = ((warmth + trust + (1 - composure)) / 3) * (1 - ego * 0.4);
 
-        const loyalty = traits[1];
-        const socialAnchor = traits[6] * loyalty;
-
-        const bravery = (rawBravery + socialAnchor) * egoMultiplier + rawAltruism;
-        const altruism = (rawAltruism * traits[6]) * egoMultiplier;
-        const selfPreservation = (personalDrive * alarmMultiplier) + defensiveShield - warmthTax;
+        const isFearful = ["Neurotic", "Avoidant", "Confused"].includes(winner.personality)
+            || ["Paranoid", "Train Wreck"].includes(winner.archetype);
+        const baseSP = isFearful
+            ? (ego + intensity + (1 - trust) + (1 - composure))
+            : (ego + composure + (1 - warmth) + (1 - trust));
+        const selfPreservation = baseSP / 4;
 
         let sacrificeScore = 0;
-        if (relationship > 90)
-            sacrificeScore += 50;
-        if (nominee.stats.charisma > 8 && relationship > 70)
-            sacrificeScore += 20;
-        sacrificeScore += (loyalty * 20);
-        sacrificeScore += (altruism * 30);
-        sacrificeScore -= (selfPreservation * 30);
+        if (relationship > 50) sacrificeScore += (relationship - 50);
+        if (nominee.stats.charisma > 8 && (relationship > 70 || gullibility > 0.65)) {
+            sacrificeScore += 15 + (gullibility * 15);
+        }
+        if (isAllied(gameState, winner, nominee)) sacrificeScore += 15;
 
-        const roll = (Math.random() * 30) - 15;
-        sacrificeScore += roll;
+        sacrificeScore += (loyalty * 25);
+        sacrificeScore += (altruism * 25);
+        sacrificeScore += (bravery * 15);
+        sacrificeScore -= (Math.max(0, selfPreservation) * 35);
+
+        const variance = 6 + ((1 - composure) * 10);
+        sacrificeScore += (Math.random() * (variance * 2)) - variance;
         
-        if (sacrificeScore >= 80) {
+        if (sacrificeScore >= 65) {
             let reason = `I like ${nominee.preferredName()}, and they deserve to stay over me.`;
-            if (loyalty > 0.8 && relationship > 90) {
+            if (loyalty > 0.75 && relationship > 90) {
                 reason = `I swore to protect ${nominee.preferredName()}, so I'm stepping down for them.`;
-            } else if (bravery > 0.8 && altruism > 0.8) {
+            } else if (bravery > 0.65 && altruism > 0.8) {
                 reason = `It's the right thing to do! ${nominee.preferredName()}'s got to take this all the way.`;
             } else if (calculateThreatScore(gameState, nominee) > 80) {
                 reason = `${nominee.preferredName()} is playing a masterclass game, so I'm giving them my spot.`;
@@ -254,7 +262,7 @@ function basicVetoChecks(
         } else {
             let selfReason = "I am going to save myself.";
             
-            if (selfPreservation > 0.8) {
+            if (selfPreservation > 0.75) {
                 selfReason = "Survival comes first. I'm keeping myself safe.";
             } else if (relationship < 50) {
                 selfReason = `I'm not throwing my game away for someone like ${nominee.preferredName()}.`;

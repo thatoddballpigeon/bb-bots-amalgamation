@@ -1,8 +1,5 @@
 import { GameState, getHouseguestById, Houseguest } from "../../model";
-import { NumberWithLogic } from "./aiApi";
 import { classifyRelationship, RelationshipType } from "./classifyRelationship";
-import { generateExcuse, Intent } from "./generateExcuse";
-import { HitListEntry } from "./hitList";
 
 export enum WinrateStrategy {
     Low,

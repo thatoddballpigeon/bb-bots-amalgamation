@@ -99,16 +99,22 @@ export class SidebarController {
             const newPlayerCount = nonEvictedHouseguests(lastEpisode.gameState).length;
             if (newPlayerCount > 0) {
                 setTimeout(() => {
+                    if (this.view.state.selectedScene !== selectedScene) {
+                        this._isProcessing = false;
+                        return;
+                    }
                     if (currentGameState.log[currentGameState.episode]) {
                         computeEpisodeRating(currentGameState);
                     }
-
+                    console.time("SimMath");
                     const generatedEpisode = this.season.renderEpisode(currentGameState);
                     newEpisode(generatedEpisode);
-
-                    this._isProcessing = false;
-                    this.switchToScene(targetScene)
-                }, 0);
+                    console.timeEnd("SimMath");
+                    requestAnimationFrame(() => {
+                        this._isProcessing = false;
+                        if (targetScene <= this.scenes.length) this.switchToScene(targetScene);
+                    });
+                }, 100);
             } else {
                 this._isProcessing = false;
             }

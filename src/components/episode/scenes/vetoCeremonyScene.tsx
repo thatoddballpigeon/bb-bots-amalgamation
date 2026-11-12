@@ -13,6 +13,7 @@ import { getEventBackgroundImage } from "../utilities/houseLocations";
 import { generateVetoConfessionalEvents } from "../utilities/confessionalEventFactory";
 import { vetoCeremonyInformation } from "../utilities/tvRatings";
 import { applyEventPopularity, applyRelationship } from "../utilities/houseEventFactory";
+import { generateVetoReason } from "../utilities/nominationReasons";
 
 interface VetoCeremonySceneOptions {
     doubleEviction?: boolean;
@@ -60,6 +61,10 @@ export function generateVetoCeremonyScene(
     const currentInfo: VetoCeremonyInformation[] = [];
     povWinners.forEach((pov, index) => {
         let decisionText = "";
+        let replacementSpeech = "";
+        let replacementReason = "";
+        let nameAReplacement = "";
+
         let currentNominees: Houseguest[] = [...finalNominees];
         let replacementNominees: Houseguest[] = [];
 
@@ -68,6 +73,9 @@ export function generateVetoCeremonyScene(
             splitIndex,
         });
         povTarget = vetoChoice.decision;
+        const povIsNom = currentNominees.some(nom => nom.id === pov.id);
+        const nomNames = finalNominees.map((nom) => getHouseguestById(initialGameState, nom.id).preferredName());
+        const nonPovNomNames = finalNominees.filter(nom => nom.id !== pov.id).map((nom) => getHouseguestById(initialGameState, nom.id).preferredName());
         const HoHnamer = povTarget ? getHouseguestById(initialGameState, povTarget.nominatorId) : HoH;
         const replacementNomineeNamer = veto === DiamondVeto ? pov : HoHnamer;
 
@@ -83,9 +91,6 @@ export function generateVetoCeremonyScene(
         } else {
             decisionText += `...${tousethepov} on ${povTarget.preferredName()}.`;
         }
-        let replacementSpeech = "";
-        let replacementReason = "";
-        let nameAReplacement = "";
         if (povTarget) {
             const target = getHouseguestById(initialGameState, povTarget.id);
             target.isNominated = false;
@@ -105,7 +110,7 @@ export function generateVetoCeremonyScene(
                 ? `Since I have just vetoed one of my nominations, I must name ${aReplacementNominee}.`
                 : `${HoHnamer.preferredName()}, since I have just vetoed ${oneOf}your nominations, ${you} must name ${aReplacementNominee}.`;
             // if the exclusion yielded no options, you may be forced to name the veto winner as a replacement
-            let exclusion = excludeHouseguests(houseguests, [...currentNominees, pov, ...immunePlayers]);
+            let exclusion = excludeHouseguests(houseguests, [...currentNominees, ...povWinners, ...immunePlayers]);
             if (exclusion.length === 0) {
                 exclusion = excludeHouseguests(houseguests, [HoH, ...currentNominees, ...immunePlayers]);
             }
@@ -137,12 +142,11 @@ export function generateVetoCeremonyScene(
                 });
             replacementNominees = replacementNoms;
             replacementSpeech = `My replacement nominee${isAre} ${listNames(names)}.`;
-            replacementReason = `I'm really sorry, ${listNames(names)}, but it's time to make a big move and put you on the block. I hope you leave.`;
+            replacementReason = `I'm really sorry, ${listNames(names)}, but it's time to make a big move and put you on the block. I hope you leave.`
 
             currentInfo.push({ hoh: HoHnamer, pov, saved: povTarget, replacements: replacementNoms, finalNominees: currentNominees });
         }
 
-        const nomNames = finalNominees.map((nom) => getHouseguestById(initialGameState, nom.id).preferredName());
         sceneContent.push(
             <React.Fragment key={`veto-ceremony-stage-${index}`}>
                 {index === 0 && (
@@ -159,7 +163,7 @@ export function generateVetoCeremonyScene(
                 <HouseEventBox
                     imageURL={getEventBackgroundImage("Living Room")}
                     houseguests={[pov, "➡️", ...finalNominees]}
-                    text={`${listNames(nomNames)} have been nominated for eviction, 
+                    text={`${povIsNom ? `${nonPovNomNames.join(", ")} and I` : listNames(nomNames)} have been nominated for eviction, 
                     but I have the power to veto one of these nominations.`}
                 />
                 <CenteredBold>...<br /></CenteredBold>

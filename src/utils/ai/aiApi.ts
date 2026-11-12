@@ -203,17 +203,17 @@ export function pickNominationTargets(
 
     const scored = candidates.map(c => {
         let reason: string = "STRATEGIC";
-        const relationship = getRelationshipStrength(gameState, hero, c);
-        const episodeDelta = gameMemory.episodeRelDelta[hero.id]?.[c.id];
+        const relationship = hero.relationshipWith(gameState, c);
+        const episodeDelta = gameMemory.episodeRelDelta[hero.id]?.[c.id] ?? 0;
         const recency = -episodeDelta * 1.2;
         const score = voteTargetScore(splitIndex, gameState, hero, c, "nomination");
 
         const cvEntry = gameState.convictions[hero.id]?.[c.id];
         const dramaContrib = Math.max(0, recency);
         const relContrib  = Math.max(0, -relationship * 4.0);
-        const nomCompWins = c.hohWins + c.povWins;
+        const nomCompWins = c.hoh.hohWins + c.pov.povWins;
         const nomTotalStats = c.stats.physical + c.stats.mental + c.stats.endurance;
-        const isThreatBased = nomCompWins >= 1 || nomTotalStats >= 20 || nonEvictedHgs <= 5;
+        const isThreatBased = nomCompWins >= 1 || nomTotalStats >= 25 || nonEvictedHgs <= 5;
 
         const episode = gameState.episode;
         if (cvEntry && cvEntry.episodesHeld >= 1) reason = 'CONVICTION';
@@ -250,7 +250,7 @@ export function voteTargetScore(
     const noiseScl = noiseScale(voterTraits);
     const phaseFactor = Math.min(0.14, 0.05 + (12 - aliveCount) * 0.009);
 
-    const epDelta = gameMemory.episodeRelDelta[vId]?.[tId];
+    const epDelta = gameMemory.episodeRelDelta[vId]?.[tId] ?? 0;
     const isTwinTarget = voter.secretTwin.isTwin && voter.secretTwin.twinPartner === tId;
     const allied = isAllied(gameState, v, t);
     const conviction = getConvictionBonus(gameState, v, t, context === 'nomination' ? 'nomination' : 'eviction');
@@ -264,7 +264,7 @@ export function voteTargetScore(
     const allianceMod = isTwinTarget ? -50 : (allied && !convictionOverridesAlliance(gameState, v, t) ? allianceWeight : 0);
     const recencyWeight = context === 'nomination' ? 1.2 : 0.8;
     const recency = -epDelta * recencyWeight;
-    const threat = calculateThreatScore(gameState, target) * phaseFactor;
+    const threat = calculateThreatScore(gameState, target, voter) * phaseFactor;
     const archMod = archetypeNominationMod(splitIndex, gameState, v, t, epDelta, aliveCount);
     const noise = (Math.random() - 0.5) * 2 * noiseScl;
 

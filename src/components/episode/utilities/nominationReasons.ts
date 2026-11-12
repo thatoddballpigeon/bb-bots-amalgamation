@@ -122,7 +122,7 @@ export function generateNominationReason(
             `big targets do not stay this comfortable for long. Today is your turn.`,
             `I do not get a clean shot at you every week. Not going to waste this one.`,
             `you've been the scariest player in this house from day one. I am not letting them survive another week.`,
-            ...(nominee.hohWins + nominee.povWins > 5 ? [`you have been winning everything in sight. This house needs a course correction.`] : []),
+            ...(nominee.hoh.hohWins + nominee.pov.povWins > 5 ? [`you have been winning everything in sight. This house needs a course correction.`] : []),
         ];
         return mk(['Taking a Shot', 'Big Player', 'Threat'], quotes);
     }
@@ -153,12 +153,12 @@ export function generateNominationReason(
     ]);
 }
 
-export function generateVetoReason(gameState: GameState, winner: Houseguest, savedNominee: Houseguest, hoh: Houseguest, decision: string) {
+export function generateVetoReason(gameState: GameState, winner: Houseguest, savedNominee: Houseguest | null, hoh: Houseguest, decision: string) {
     const wn = winner.preferredName();
     const mk = (quotes: string[]) => quotes[Math.floor(Math.random() * quotes.length)];
 
     if (decision === 'use') {
-        const sn = savedNominee.preferredName();
+        const sn = savedNominee ? savedNominee.preferredName() : "them";
         const selfVeto = savedNominee && savedNominee.id === winner.id;
         if (selfVeto) return mk([
             `"I won this and I am using it on myself. I did not fight this hard to stay on the block."`,
@@ -206,8 +206,11 @@ export function generateEvictionReason(
     const mk = (types: string | string[], pool: string[]) => ({ type: pick(Array.isArray(types) ? types : [types]), quote: pick(pool) });
 
     const gameMemory = gameState.memory;
-    const episodeDelta = gameMemory.episodeRelDelta[voter.id][target.id];
-    const timesNominated = target.nominations;
+    const episodeDelta = gameMemory.episodeRelDelta[voter.id]?.[target.id] ?? 0;
+    let timesNominated = 0;
+    gameState.log[gameState.episode].forEach(log => {
+        if (log.nominationsPreVeto && log.nominationsPreVeto.includes(target.id)) timesNominated++;
+    });
 
     const voterConviction = gameState.convictions[voter.id]?.[target.id];
     if (voterConviction && voterConviction.episodesHeld >= 1) {
@@ -284,7 +287,7 @@ export function generateSaveReason(
     const mk = (types: string | string[], pool: string[]) => ({ type: pick(Array.isArray(types) ? types : [types]), quote: pick(pool) });
 
     const gameMemory = gameState.memory;
-    const episodeDelta = gameMemory.episodeRelDelta[voter.id][target.id];
+    const episodeDelta = gameMemory.episodeRelDelta[voter.id]?.[target.id] ?? 0;
     const timesNominated = target.nominations;
 
     const voterConviction = gameState.convictions[voter.id]?.[target.id];

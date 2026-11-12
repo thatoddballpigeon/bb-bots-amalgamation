@@ -38,15 +38,15 @@ export function generateHouseEvents(
 ): HouseEvent[] {
     let events: any[] = [];
     const house = nonEvictedHouseguestsSplit(splitIndex, gameState);
-    const len = house.length;
+    const castSize = house.length;
 
     let moodSum = 0, moodCount = 0;
-    if (len > 1) {
-        const sampleTarget = len > 100 ? 2000 : (len * (len - 1)) / 2;
+    if (castSize > 1) {
+        const sampleTarget = castSize > 100 ? 2000 : (castSize * (castSize - 1)) / 2;
         for (let s = 0; s < sampleTarget; s++) {
-            const i = Math.floor(Math.random() * len);
-            let j = Math.floor(Math.random() * len);
-            while (i === j) { j = Math.floor(Math.random() * len); }
+            const i = Math.floor(Math.random() * castSize);
+            let j = Math.floor(Math.random() * castSize);
+            while (i === j) { j = Math.floor(Math.random() * castSize); }
 
             const rel = house[i].relationshipWith(gameState, house[j]);
             if (rel != null) {
@@ -91,7 +91,12 @@ export function generateHouseEvents(
         options.eviction && events.push(...generateBeforeEvictionEvents(gameState, splitIndex, hohWinners, nominees));
     }
 
-    const max = randomInt(7, 9);
+    const effectiveCast = Math.min(30, castSize);
+
+    const minBound = Math.max(1, Math.round((effectiveCast / 30) * 7));
+    const maxBound = Math.max(minBound + 1, Math.round((effectiveCast / 30) * 10));
+
+    const max = randomInt(minBound, maxBound);
     for (let i = 0; i < weighted.length; i++) {
         if (events.length >= max) break;
         
@@ -572,7 +577,7 @@ function totalWeightFuncForCategory(category: string | null, size?: number) {
         const aCW = cls ? archClassWeights[cls]?.[category] ?? 1 : 1;
         const aW = archWeights[archetype]?.[category] ?? 1;
         const tW = traitWeightForCategory(category, stats, traits);
-        const gW = cls ? groupWeights[cls]?.[(size || 1)] ?? 1 : 1;
+        const gW = cls ? groupWeights[cls]?.[Math.min(5, size ?? 1)] ?? 1 : 1;
         return aCW * aW * tW * gW;
     };
 }
@@ -731,8 +736,14 @@ export function validTrio(splitIndex: number | null | undefined, gameState: Game
     return randomPlayersWeighted(pool, 3, wf);
 }
     
-export function validGroup(splitIndex: number | null | undefined, gameState: GameState, amount: number, weightFunc?: (p: Houseguest) => number): Houseguest[] | null {
-    const pool = getValidHouseguests(splitIndex, gameState);
+export function validGroup(
+    splitIndex: number | null | undefined,
+    gameState: GameState,
+    amount: number,
+    filter?: (p: Houseguest) => boolean,
+    weightFunc?: (p: Houseguest) => number
+): Houseguest[] | null {
+    const pool = getValidHouseguests(splitIndex, gameState, filter);
     if (pool.length < amount) return null;
     const size = Math.min(pool.length, amount);
     const wf = resolveWeightFunc(weightFunc, size);
@@ -772,18 +783,18 @@ export function applyEventPopularity(hero: Houseguest, amount: number) {
 
 const ARCHETYPE_CLASS_EVENT_WEIGHTS = {
     "Comp Beasts": { spotlight: 1.15, rivalry: 1.1, exercise: 1.20 },
-    "Strategists": { sabotage: 1.15, rivalry: 0.85 },
+    "Strategists": { confessional: 1.15, sabotage: 1.15, rivalry: 0.85 },
     "Social Butterflies": { bonding: 1.3 },
-    "Floaters": { bonding: 1.25, drama: 0.75, spotlight: 0.85, exercise: 0.85, rivalry: 0.85 },
-    "Showmances": { romance: 1.35, showmance: 1.3, bonding: 1.15 },
-    "Villains": { drama: 1.3, sabotage: 1.2, rivalry: 1.25, communal: 0.85 },
-    "Production Pets": { spotlight: 1.3, rivalry: 1.15, sabotage: 0.85 },
-    "Jesters": { bonding: 1.2, spotlight: 1.15, sabotage: 1.15, communal: 0.85 },
-    "Superfans": { bonding: 1.15, spotlight: 0.85, exercise: 0.75 },
-    "Homemakers": { communal: 1.3, bonding: 1.1, exercise: 0.75, sabotage: 0.75, spotlight: 0.85, rivalry: 0.75 },
-    "Underdogs": { spotlight: 1.15, exercise: 1.10, rivalry: 1.15 },
-    "Outcasts": { rivalry: 1.25, bonding: 0.75, spotlight: 0.85, romance: 0.75, drama: 1.2 },
-    "Confessionalists": { spotlight: 1.15, drama: 1.15 },
+    "Floaters": { bonding: 1.25, drama: 0.75, spotlight: 0.85, exercise: 0.85, rivalry: 0.85, confessional: 0.75 },
+    "Showmances": { romance: 1.35, showmance: 1.3, bonding: 1.15, confessional: 1.05 },
+    "Villains": { drama: 1.3, sabotage: 1.2, confessional: 1.2, rivalry: 1.25, communal: 0.85 },
+    "Production Pets": { spotlight: 1.3, confessional: 1.25, rivalry: 1.15, sabotage: 0.85},
+    "Jesters": { confessional: 1.2, bonding: 1.2, spotlight: 1.15, sabotage: 1.15, communal: 0.85 },
+    "Superfans": { confessional: 1.15, bonding: 1.15, spotlight: 0.85, exercise: 0.75 },
+    "Homemakers": { communal: 1.3, bonding: 1.1, confessional: 0.9, exercise: 0.75, sabotage: 0.75, spotlight: 0.85, rivalry: 0.75 },
+    "Underdogs": { spotlight: 1.15, confessional: 1.1, exercise: 1.10, rivalry: 1.15 },
+    "Outcasts": { rivalry: 1.25, drama: 1.2, bonding: 0.75, spotlight: 0.85, romance: 0.75, confessional: 0.85 },
+    "Confessionalists": { confessional: 1.35, spotlight: 1.15, drama: 1.15 },
 };
 
 const ARCHETYPE_EVENT_WEIGHTS = {
@@ -818,7 +829,7 @@ const ARCHETYPE_EVENT_WEIGHTS = {
 };
 
 const GROUP_SIZE_EVENT_WEIGHTS = {
-    "Lone Wolf": { 1: 0.45, 2: 0.4, 3: 0.1, 4: 0.04, 5: 0.01 },
+    "Lone Wolf": { 1: 1.25, 2: 1.15, 3: 0.85, 4: 0.8, 5: 0.75 },
     "Strategists": { 1: 1.15, 2: 1.25, 3: 1.00, 4: 0.85, 5: 0.75 },
     "Outcasts": { 1: 1.25, 2: 1.10, 3: 0.85, 4: 0.75, 5: 0.75 },
     "Villains": { 1: 0.85, 2: 1.00, 3: 1.20, 4: 1.25, 5: 0.75 },

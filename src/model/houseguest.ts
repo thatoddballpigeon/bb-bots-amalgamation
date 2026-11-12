@@ -1,6 +1,5 @@
 import { PlayerProfile } from "./playerProfile";
 import { Tribe } from "./tribe";
-import { HitListEntry } from "../utils/ai/hitList";
 import { listFullName } from "../utils/listStrings";
 import { GameState } from "./gameState";
 
@@ -19,6 +18,7 @@ interface PovOptions {
     saved: Houseguest[];
     replacements: Houseguest[];
 }
+
 interface PlayerBuffs {
     exercise?: { amount: number, episode: number } | null;
 }
@@ -40,16 +40,12 @@ export class Houseguest extends PlayerProfile {
     readonly id: number = 0;
 
     public nominations: number = 0;
-    public hohWins: number = 0;
-    public povWins: number = 0;
 
     // Popularity ranges from -1 to 1
     public compatibility: [number, number, number] = [0, 0, 0];
     public housePopularity: number = 0;
     public deltaPopularity: number = 0;
     public previousPopularity: number = 0;
-
-    public interactedWith: Set<number> = new Set<number>();
 
     // Power rankings range from 0 to 1
     public powerRanking: number = 0;

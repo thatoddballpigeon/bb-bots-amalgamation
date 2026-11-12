@@ -53,7 +53,7 @@ export class EditRelationshipsScreen extends React.Component<
             (props.initialTribes ? this.initalizeTribes(props.profiles, props.initialTribes) : {});
         this.state = {
             cast: props.profiles,
-            relationships: props.relationships || firstImpressionsMap(props.profiles),
+            relationships: props.relationships && Object.keys(props.relationships).length > 0 ? props.relationships : firstImpressionsMap(props.profiles, false),
             currentTribes,
             selectedPlayer: undefined,
             swapButtonActive: false,
@@ -189,7 +189,7 @@ export class EditRelationshipsScreen extends React.Component<
                     <button
                         className={`button is-warning`}
                         onClick={() => {
-                            this.setState({ relationships: firstImpressionsMap(props.profiles) });
+                            this.setState({ relationships: firstImpressionsMap(this.props.profiles, true) });
                             selectPlayer(null);
                         }}
                     >
@@ -226,6 +226,8 @@ export class EditRelationshipsScreen extends React.Component<
                     <button
                         className="button is-success"
                         onClick={async () => {
+                            console.log("Saving relationships:", this.state.relationships[0][1]);
+console.log("Cast player 0 object:", this.state.cast[0]);
                             overwriteCast(this.state.cast, {
                                 relationships: this.state.relationships,
                                 initialTribes: this.props.initialTribes,
@@ -239,6 +241,7 @@ export class EditRelationshipsScreen extends React.Component<
                                 new PregameEpisode(
                                     new GameState({
                                         players: getCast(),
+                                        relationships: this.state.relationships,
                                         jury: getLastJurySize(),
                                         finalists: getLastFinalistSize(),
                                         hohPlaysVeto: getLastHoHPlaysVeto(),
